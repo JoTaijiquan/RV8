@@ -32,7 +32,7 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
         reg [2:0] rsel;
         rsel = (state==EX) ? din[2:0] : ir_opr[2:0];
         case(rsel)
-            0:case(din[3:2]) 0:rs=0;1:rs=1;2:rs=8'hFF;3:rs=8'h80;endcase
+            0:case(din[4:3]) 0:rs=0;1:rs=1;2:rs=8'hFF;3:rs=8'h80;endcase // const gen uses bits[4:3]
             1:rs=sp;2:rs=a0;3:rs=pl;4:rs=ph;5:rs=t0;6:rs=pg;default:rs=0;
         endcase
     end

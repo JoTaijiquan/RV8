@@ -403,6 +403,38 @@ module rv8_tb;
         mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
         reset; whalt(80); chk8(8'hAB,A,"MOV");
 
+        // === CONSTANT GENERATOR ===
+        $display("--- Const Gen ---");
+        // ADD c1 (add 1): operand = 0x08 (reg=0, bits[4:3]=01 → const=1)
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h10; // LI a0,0x10
+        mem[16'hC002]=8'h00; mem[16'hC003]=8'h08; // ADD c1
+        mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00;
+        reset; whalt(80); chk8(8'h11,A,"ADD c1");
+
+        // ADD cn (add -1/0xFF): operand = 0x10 (reg=0, bits[4:3]=10)
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h10; // LI a0,0x10
+        mem[16'hC002]=8'h00; mem[16'hC003]=8'h10; // ADD cn
+        mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00;
+        reset; whalt(80); chk8(8'h0F,A,"ADD cn");
+
+        // ADD ch (add 0x80): operand = 0x18 (reg=0, bits[4:3]=11)
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h10; // LI a0,0x10
+        mem[16'hC002]=8'h00; mem[16'hC003]=8'h18; // ADD ch
+        mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00;
+        reset; whalt(80); chk8(8'h90,A,"ADD ch");
+
+        // === NMI ===
+        $display("--- NMI ---");
+        init_mem; mem[16'hC000]=8'hF2; mem[16'hC001]=8'h00; // EI
+        mem[16'hC002]=8'hFF; mem[16'hC003]=8'h00; // HLT
+        mem[16'hFFFA]=8'h40; mem[16'hFFFB]=8'hC0; // NMI vector → 0xC040
+        mem[16'hC040]=8'h11; mem[16'hC041]=8'hDD; // LI a0,0xDD
+        mem[16'hC042]=8'hFF; mem[16'hC043]=8'h00; // HLT
+        reset; whalt(60);
+        nmi_n=0; #30; nmi_n=1; // pulse NMI (falling edge, hold 3 clocks)
+        whalt(80);
+        chk8(8'hDD,A,"NMI");
+
         // === SP+imm ===
         $display("--- SP+imm ---");
         init_mem; mem[16'hC000]=8'h10; mem[16'hC001]=8'hF0; // LI sp,0xF0
