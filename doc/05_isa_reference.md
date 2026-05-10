@@ -144,6 +144,8 @@ Operates on a0. Flags: Z (approx), C (for shifts).
 | 0xF1 | SEC | C = 1 |
 | 0xF2 | EI | IE = 1 (enable interrupts) |
 | 0xF3 | DI | IE = 0 (disable interrupts) |
+| 0xF4 | RTI | Pop flags, pop PCL, pop PCH (return from interrupt) |
+| 0xF5 | TRAP imm | Push PCH, PCL, flags; jump to vector 0xFFF6 |
 | 0xFE | NOP | No operation |
 | 0xFF | HLT | Halt (wake on interrupt if IE=1) |
 
@@ -177,7 +179,7 @@ Operates on a0. Flags: Z (approx), C (for shifts).
 
 ---
 
-## Instruction Count: 52 implemented
+## Instruction Count: 66 implemented, 69 tests pass
 
 | Group | Count |
 |-------|:-----:|
@@ -190,7 +192,9 @@ Operates on a0. Flags: Z (approx), C (for shifts).
 | Jump | 3 |
 | Shift/Unary | 8 |
 | Pointer | 3 |
-| System | 6 |
-| **Total** | **66** |
+| System | 8 |
+| **Total** | **68** |
 
-Undefined opcodes (0x08-0x0F, 0x2E-0x2F, 0x3B, 0x3F, 0x4B-0xEF, 0xF4-0xFD) → treated as NOP.
+66 unique opcodes implemented in Verilog. 69 tests pass (some instructions tested multiple ways).
+
+Undefined opcodes (0x08-0x0F, 0x1D-0x1F, 0x2E-0x2F, 0x3B, 0x3F, 0x4B-0xEF, 0xF6-0xFD) → treated as NOP.

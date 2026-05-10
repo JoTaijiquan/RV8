@@ -7,7 +7,7 @@ Build a real computer from 74HC chips. 69 tests pass. Complete ISA verified.
 | Parameter | Value |
 |-----------|-------|
 | Data/Address | 8-bit data, 16-bit address (64KB) |
-| Instructions | 66 (fixed 2-byte), 69 tests pass |
+| Instructions | 68 (fixed 2-byte), 69 tests pass |
 | Registers | 7 (c0, sp, a0, pl, ph, t0, pg) |
 | Gates | ~730 |
 | Chips | 23 CPU / 27 system |
