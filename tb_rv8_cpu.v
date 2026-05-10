@@ -435,6 +435,34 @@ module rv8_tb;
         whalt(80);
         chk8(8'hDD,A,"NMI");
 
+        // === TRAP ===
+        $display("--- TRAP ---");
+        init_mem;
+        mem[16'hFFF6]=8'h50; mem[16'hFFF7]=8'hC0; // TRAP vector → 0xC050
+        mem[16'hC000]=8'h11; mem[16'hC001]=8'h42; // LI a0,0x42
+        mem[16'hC002]=8'hF5; mem[16'hC003]=8'h00; // TRAP
+        mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00; // HLT (return here after RTI)
+        // TRAP handler at 0xC050:
+        mem[16'hC050]=8'h11; mem[16'hC051]=8'hBB; // LI a0,0xBB
+        mem[16'hC052]=8'hFF; mem[16'hC053]=8'h00; // HLT
+        reset; whalt(120);
+        chk8(8'hBB,A,"TRAP");
+
+        // === RTI ===
+        $display("--- RTI ---");
+        init_mem;
+        mem[16'hFFF6]=8'h50; mem[16'hFFF7]=8'hC0; // TRAP vector → 0xC050
+        mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC (set C flag)
+        mem[16'hC002]=8'hF5; mem[16'hC003]=8'h00; // TRAP
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'hDD; // LI a0,0xDD (after RTI returns here)
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00; // HLT
+        // TRAP handler:
+        mem[16'hC050]=8'h11; mem[16'hC051]=8'h00; // LI a0,0 (clear a0)
+        mem[16'hC052]=8'hF0; mem[16'hC053]=8'h00; // CLC (clear C in handler)
+        mem[16'hC054]=8'hF4; mem[16'hC055]=8'h00; // RTI (restore flags + return)
+        reset; whalt(200);
+        chk8(8'hDD,A,"RTI return"); chk1(1,FC,"RTI restores C");
+
         // === SP+imm ===
         $display("--- SP+imm ---");
         init_mem; mem[16'hC000]=8'h10; mem[16'hC001]=8'hF0; // LI sp,0xF0

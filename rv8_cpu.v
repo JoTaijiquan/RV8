@@ -15,7 +15,7 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
     reg [15:0] pc;
     reg [7:0] a0,t0,sp,pl,ph,pg,ir_op,ir_opr;
     reg fz,fc,fn,fie,skip;
-    reg [3:0] state;
+    reg [4:0] state;
     reg [7:0] dout; reg doe;
     assign data_bus = doe ? dout : 8'bz;
     wire [7:0] din = data_bus;
@@ -168,11 +168,11 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                     sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
                     dout<=pc[15:8]; // high byte (pc+2 won't cross page for typical code)
                     doe<=1; mem_wr_n<=0;
-                    state<=4'd10;
+                    state<=5'd10;
                 end
                 else if(ir_op==8'h3E) begin // RET - pop PC
                     addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0;
-                    state<=4'd12; // RET_S2: latch low, read high
+                    state<=5'd12; // RET_S2: latch low, read high
                 end
                 else if(ir_op>=8'h40 && ir_op<=8'h47) begin // Shift/Unary
                     case(ir_op[2:0])
@@ -204,12 +204,15 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 else if(ir_op==8'hF2) begin fie<=1; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
                 else if(ir_op==8'hF3) begin fie<=0; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
                 else if(ir_op==8'hF4) begin // RTI: pop flags, pop PCL, pop PCH
-                    addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=4'd14;
+                    addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=5'd14;
                 end
-                else if(ir_op==8'hF5) begin // TRAP: push PC, push flags, jump to vector 0xFFF6
+                else if(ir_op==8'hF5) begin // TRAP: push PCH, then PCL, then flags, jump to 0xFFF6
                     sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
                     dout<=pc[15:8]; doe<=1; mem_wr_n<=0;
-                    fie<=0; state<=4'd10; // reuse JAL push sequence, then vector
+                    fie<=0; state<=5'd10; // push PCL next
+                    // After push sequence (states 10→11), state 11 jumps to {ph,pl}
+                    // Set ptr to TRAP vector so state 11 reads from there
+                    ph<=8'hFF; pl<=8'hF6;
                 end
                 else if(ir_op==8'hFE) begin addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end // NOP
                 else if(ir_op==8'hFF) begin state<=HLT; end // HLT
@@ -229,44 +232,53 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
             4'd9: begin // M3: write done, next fetch
                 addr_bus<=pc; mem_rd_n<=0; state<=F1;
             end
-            4'd10: begin // JAL_S2: push PC low byte (pc is now pc+2 from non-blocking)
+            5'd10: begin // JAL_S2 / TRAP_S2: push PC low byte
                 sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
-                dout<=pc[7:0]; // pc is now updated (pc+2) from previous cycle
-                doe<=1; mem_wr_n<=0;
-                state<=4'd11;
+                dout<=pc[7:0]; doe<=1; mem_wr_n<=0;
+                if(ir_op==8'hF5) state<=5'd16; // TRAP: push flags next
+                else state<=5'd11; // JAL: jump next
             end
-            4'd11: begin // JAL_S3: jump to ptr
-                pc<={ph,pl}; addr_bus<={ph,pl}; mem_rd_n<=0; state<=F1;
+            5'd11: begin // JAL_S3 / TRAP_S3: jump to target
+                if(ir_op==8'hF5) begin // TRAP: read vector from {ph,pl}
+                    addr_bus<={ph,pl}; mem_rd_n<=0; state<=5'd15; // read vector low
+                end else begin // JAL: jump directly to {ph,pl}
+                    pc<={ph,pl}; addr_bus<={ph,pl}; mem_rd_n<=0; state<=F1;
+                end
             end
-            4'd12: begin // RET_S2: latch PC low, read PC high
+            5'd12: begin // RET_S2: latch PC low, read PC high
                 pc[7:0]<=din;
                 addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0;
-                state<=4'd13;
+                state<=5'd13;
             end
-            4'd13: begin // RET_S3: latch PC high, fetch from new PC
+            5'd13: begin // RET_S3: latch PC high, fetch from new PC
                 pc[15:8]<=din;
                 addr_bus<={din,pc[7:0]}; mem_rd_n<=0; state<=F1;
             end
-            4'd14: begin // RTI_S1: latch flags, pop PCL
+            5'd14: begin // RTI_S1: latch flags, pop PCL
                 {fn,fc,fz,fie} <= {din[3],din[2],din[1],din[0]};
-                addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=4'd12; // reuse RET_S2/S3
+                addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=5'd12; // reuse RET_S2/S3
             end
             HLT: begin
                 if(nmi_fire) begin
                     nmi_pend<=0; fie<=0;
                     // Read NMI vector at 0xFFFA
-                    addr_bus<=16'hFFFA; mem_rd_n<=0; state<=4'd15;
+                    addr_bus<=16'hFFFA; mem_rd_n<=0; state<=5'd15;
                 end
                 else if(irq_fire) begin
                     fie<=0;
                     // Read IRQ vector at 0xFFFE
-                    addr_bus<=16'hFFFE; mem_rd_n<=0; state<=4'd15;
+                    addr_bus<=16'hFFFE; mem_rd_n<=0; state<=5'd15;
                 end
             end
-            4'd15: begin // INT_S1: latch vector low, read vector high
+            5'd15: begin // INT_S1: latch vector low, read vector high
                 pc[7:0]<=din;
                 addr_bus<=addr_bus+16'd1; mem_rd_n<=0;
-                state<=4'd13; // reuse RET_S3 (latch high, start fetch)
+                state<=5'd13; // reuse RET_S3 (latch high, start fetch)
+            end
+            5'd16: begin // TRAP_S3: push flags byte
+                sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
+                dout<={4'd0, fn, fc, fz, fie}; doe<=1; mem_wr_n<=0;
+                state<=5'd11; // then jump to vector
             end
             default: state<=B0;
             endcase
