@@ -11,26 +11,28 @@
 
 RV801 is an ultra-minimal implementation of the RV8 ISA using **bit-serial ALU** and **registers in RAM**. Same programs run on both RV8 and RV801 — just slower on RV801.
 
+Two sub-variants:
+- **RV801-A**: 8 chips, uses EEPROM for microcode (needs programmer)
+- **RV801-B**: 9 chips, fully hardwired (no programmer needed)
+
 ---
 
-## Comparison: RV8 vs RV801
+## Comparison: RV8 vs RV801-A vs RV801-B
 
-| | RV8 (fast) | RV801 (minimal) |
-|--|---|---|
-| CPU chips | 20 | **8** |
-| System chips (CPU+ROM+RAM) | 24 | **11** |
-| Gates | ~873 | **~300** |
-| Speed | ~1.5M instr/s | **~100K instr/s** |
-| ALU | 8-bit parallel | **1-bit serial** |
-| Registers | Hardware (74HC574) | **In RAM** (zero-page) |
-| Control | Direct-encoded FSM | **Microcode EEPROM** |
-| Fetch/execute overlap | Yes | No |
-| Constant generator | Hardware mux | Software (values in RAM) |
-| Conditional skip | Hardware (AND gate) | Microcode sequence |
-| Cost (CPU card) | ~$45 | **~$15** |
-| Breadboards | 3 | **1** |
-| Build time | 4-5 weeks | **1-2 weeks** |
-| Best for | Full computer, games, BASIC | Learning CPU basics, first build |
+| | RV8 (fast) | RV801-A (EEPROM) | RV801-B (hardwired) |
+|--|---|---|---|
+| CPU chips | 20 | **8** | **9** |
+| System chips | 24 | **11** | **12** |
+| Gates | ~873 | ~300 | ~340 |
+| Speed | ~1.5M instr/s | ~175K instr/s | ~175K instr/s |
+| ALU | 8-bit parallel | 1-bit serial | 1-bit serial |
+| Registers | Hardware (74HC574) | In RAM | In RAM |
+| Control | Direct-encoded FSM | **EEPROM microcode** | **74HC logic (hardwired)** |
+| Needs programmer | No | **Yes** | **No** |
+| Cost (CPU card) | ~$45 | ~$15 | ~$13 |
+| Breadboards | 3 | 1 | 1 |
+| Build time | 4-5 weeks | 1-2 weeks | 1-2 weeks |
+| Best for | Full computer, games | Schools with programmer | Anyone, anywhere |
 
 ---
 
@@ -62,7 +64,9 @@ RV801 is an ultra-minimal implementation of the RV8 ISA using **bit-serial ALU**
 
 ---
 
-## Chip List (8 chips)
+## Chip List
+
+### RV801-A (8 chips, with EEPROM)
 
 | # | Chip | Function |
 |---|------|----------|
@@ -74,6 +78,20 @@ RV801 is an ultra-minimal implementation of the RV8 ISA using **bit-serial ALU**
 | U6 | 74HC161 | Micro-step counter (counts 0-15 for bit-serial ops) |
 | U7 | AT28C16 | Microcode ROM (2K×8, controls all sequencing) |
 | U8 | 74HC245 | Data bus buffer (bidirectional) |
+
+### RV801-B (9 chips, no EEPROM)
+
+| # | Chip | Function |
+|---|------|----------|
+| U1 | 74HC161 | PC low 8 bits (cascaded counter) |
+| U2 | 74HC161 | PC high 8 bits (cascaded) |
+| U3 | 74HC595 | Accumulator (8-bit shift register) |
+| U4 | 74HC153 | 1-bit ALU (4:1 mux: ADD/AND/OR/XOR) |
+| U5 | 74HC74 | Flags (Carry + Zero) + NMI latch |
+| U6 | 74HC161 | Phase counter (2-bit) + bit counter (3-bit) |
+| U7 | 74HC138 | Phase decode (FETCH/EXEC/WRITE select) |
+| U8 | 74HC00 | Signal generation (NAND gates for control) |
+| U9 | 74HC245 | Data bus buffer (bidirectional) |
 
 ---
 
@@ -128,15 +146,18 @@ ROM data: 8 control signals
 
 ---
 
-## Performance
+## Performance (with optimized microcode/sequencing)
 
 | Operation | Micro-steps | Time @ 3.5 MHz |
 |-----------|:-----------:|:--------------:|
-| Fetch (2 bytes) | 4 | 1.1 µs |
+| Fetch (2 bytes) | 2 | 0.6 µs |
 | ALU (8-bit serial) | 8 | 2.3 µs |
-| Memory load | 4 | 1.1 µs |
-| Total per instruction | 12-20 | 3.4-5.7 µs |
-| **Instructions/sec** | | **~100K-175K** |
+| Memory load | 2 | 0.6 µs |
+| Simple instruction (MOV, NOP) | 4 | 1.1 µs |
+| ALU instruction (ADD, SUB) | 12 | 3.4 µs |
+| Memory instruction (LB, SB) | 6 | 1.7 µs |
+| **Average instructions/sec** | | **~175K** |
+| **BASIC lines/sec** | | **~50** |
 
 ---
 
@@ -156,7 +177,9 @@ Programs compiled for RV8 run unmodified on RV801. Just slower.
 
 ---
 
-## Complete System (11 chips)
+## Complete System
+
+### RV801-A (11 chips total)
 
 | # | Chip | Function | Cost |
 |---|------|----------|------|
@@ -165,6 +188,16 @@ Programs compiled for RV8 run unmodified on RV801. Just slower.
 | U10 | 62256 | RAM (32KB) | $3 |
 | U11 | 74HC138 | Address decode | $0.50 |
 | | | **Total** | **~$15.50** |
+
+### RV801-B (12 chips total)
+
+| # | Chip | Function | Cost |
+|---|------|----------|------|
+| U1-U9 | CPU (above) | Processor | $6 |
+| U10 | AT28C256 | Program ROM (32KB) | $4 |
+| U11 | 62256 | RAM (32KB) | $3 |
+| U12 | 74HC138 | Address decode | $0.50 |
+| | | **Total** | **~$13.50** |
 
 ---
 
@@ -183,7 +216,9 @@ Programs compiled for RV8 run unmodified on RV801. Just slower.
 ## Student Progression
 
 ```
-RV801 (8 chips, $15, 1 breadboard)
+RV801-B (9 chips, $13, no programmer needed)
+  OR
+RV801-A (8 chips, $15, needs EEPROM programmer)
   "I built a CPU that runs programs!"
        ↓ (same ROM, same programs)
 RV8 (20 chips, $45, 3 breadboards)
@@ -195,4 +230,4 @@ Full Computer (video, sound, keyboard)
 
 ---
 
-*Same ISA. Same programs. Same ROM. Different speed. Different chip count.*
+*Same ISA. Same programs. Same ROM. Three implementations. Student picks based on skill level and available tools.*
