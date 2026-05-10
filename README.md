@@ -1,44 +1,54 @@
 # RV8 — Minimal 8-bit Educational CPU
 
-Build a real computer from 74HC chips. Learn CPU design, assembly, BASIC, and electronics.
+Build a real computer from 74HC chips. 69 tests pass. Complete ISA verified.
 
-## What is RV8?
-
-RV8 is an 8-bit CPU inspired by the 6502 with RISC-V naming conventions, designed to be built by students on breadboard or PCB.
+## Specs
 
 | Parameter | Value |
 |-----------|-------|
-| Data bus | 8-bit |
-| Address bus | 16-bit (64KB) |
-| Instructions | 58 (fixed 2-byte) |
-| Registers | 5 (zero, sp, a0, pl, ph) |
-| Gate count | ~848 |
-| CPU chips | 22 (74HC logic) |
+| Data/Address | 8-bit data, 16-bit address (64KB) |
+| Instructions | 66 (fixed 2-byte), 69 tests pass |
+| Registers | 7 (c0, sp, a0, pl, ph, t0, pg) |
+| Gates | ~730 |
+| Chips | 23 CPU / 27 system |
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
-| Video | 320×240, 16 colors + 40×25 text |
-| Sound | 8-bit DAC |
-| Cost | $64 (trainer) / $120 (full PC) |
+| Verilog | 240 lines behavioral, 253 lines structural |
 
-## Build Options
+## Repository Structure
 
-- **Trainer** — Hex keypad, LCD, LEDs, single-step debug ($64, 36 chips)
-- **Full PC** — QWERTY keyboard, VGA/composite video, BASIC, games ($120, 41 chips)
+```
+├── README.md
+├── rtl/
+│   ├── rv8_cpu.v          Behavioral (simulation, all tests pass)
+│   └── rv8_synth.v        Structural (FPGA synthesis target)
+├── tb/
+│   └── tb_rv8_cpu.v       Testbench (69 tests)
+├── doc/
+│   ├── 00_summary.md      Design decisions & discussion
+│   ├── 01_requirements.md Hardware requirements (v5)
+│   ├── 02_isa_design.md   ISA design history
+│   ├── 03_rv801_spec.md   Ultra-minimal 8-chip variant
+│   ├── 04_architecture.md Architecture (verified)
+│   └── 05_isa_reference.md ISA reference (source of truth)
+```
 
-Both share the same CPU card (26 chips) and universal bus slot for expansion.
+## Quick Start
 
-## Project Status
+```bash
+# Simulate
+iverilog -g2012 -o rv8_sim rtl/rv8_cpu.v tb/tb_rv8_cpu.v
+./rv8_sim
 
-- [x] Phase 1: Requirements specification
-- [x] Phase 2: ISA design
-- [ ] Phase 3: Architecture design
-- [ ] Phase 4: Verilog implementation
-- [ ] Phase 5: Testbench & verification
+# Expected output: PASS: 69  FAIL: 0
+```
 
-## Documentation
+## Variants
 
-- [Summary](00_summary.md) — Full design discussion & decisions
-- [Requirements](01_requirements.md) — Hardware specification (v4)
-- [ISA Design](02_isa_design.md) — Instruction set architecture (v3)
+| Variant | Chips | Speed | Best for |
+|---------|:-----:|:-----:|---------|
+| RV8 | 23 CPU | 1.2M/s | Full computer, games, BASIC |
+| RV801-A | 8 CPU | 175K/s | Learning (needs EEPROM programmer) |
+| RV801-B | 9 CPU | 175K/s | Learning (no programmer needed) |
 
 ## License
 
