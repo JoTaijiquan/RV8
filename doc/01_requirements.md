@@ -1,3 +1,5 @@
+> **⚠️ HISTORICAL DOCUMENT** — This captures the design discussion. For the verified final spec, see `doc/05_isa_reference.md` and `doc/04_architecture.md`.
+
 # RV8 — Requirements Specification
 
 **Project**: RV8 Minimal Educational CPU  
