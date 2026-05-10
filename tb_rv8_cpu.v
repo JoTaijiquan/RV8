@@ -233,6 +233,66 @@ module rv8_tb;
         mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
         reset; whalt(80); chk8(8'h01,A,"ROL");
 
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC (C=1)
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h00; // LI a0,0x00
+        mem[16'hC004]=8'h43; mem[16'hC005]=8'h00; // ROR (shift in C=1 to bit7)
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'h80,A,"ROR");
+
+        // === ADC/SBC ===
+        $display("--- ADC/SBC ---");
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC (C=1)
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h10; // LI a0,0x10
+        mem[16'hC004]=8'h14; mem[16'hC005]=8'h05; // LI t0,0x05
+        mem[16'hC006]=8'h06; mem[16'hC007]=8'h05; // ADC t0 (0x10+0x05+1=0x16)
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h16,A,"ADC");
+
+        // === MOV ===
+        $display("--- MOV ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'hAB; // LI a0,0xAB
+        mem[16'hC002]=8'h24; mem[16'hC003]=8'h05; // MOV t0, a0
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'h00; // LI a0,0
+        mem[16'hC006]=8'h25; mem[16'hC007]=8'h05; // MOV a0, t0
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'hAB,A,"MOV");
+
+        // === SP+IMM ===
+        $display("--- SP+imm ---");
+        init_mem; mem[16'hC000]=8'h10; mem[16'hC001]=8'hF0; // LI sp,0xF0
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h99; // LI a0,0x99
+        mem[16'hC004]=8'h27; mem[16'hC005]=8'h02; // SB a0,[sp+2] → addr {0x30,0xF2}
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'h00; // LI a0,0
+        mem[16'hC008]=8'h26; mem[16'hC009]=8'h02; // LB a0,[sp+2]
+        mem[16'hC00A]=8'hFF; mem[16'hC00B]=8'h00;
+        reset; whalt(80); chk8(8'h99,A,"sp+imm");
+
+        // === NOP ===
+        $display("--- NOP ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h42; // LI a0,0x42
+        mem[16'hC002]=8'hFE; mem[16'hC003]=8'h00; // NOP
+        mem[16'hC004]=8'hFE; mem[16'hC005]=8'h00; // NOP
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'h42,A,"NOP");
+
+        // === IRQ (HLT wake) ===
+        $display("--- IRQ ---");
+        init_mem;
+        mem[16'hC000]=8'hF2; mem[16'hC001]=8'h00; // EI
+        mem[16'hC002]=8'h12; mem[16'hC003]=8'h00; // LI pl,0 (setup ptr for after)
+        mem[16'hC004]=8'h13; mem[16'hC005]=8'hC0; // LI ph,0xC0
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00; // HLT (will wake on IRQ)
+        // IRQ vector → 0xC030
+        mem[16'hFFFE]=8'h30; mem[16'hFFFF]=8'hC0;
+        // ISR at 0xC030:
+        mem[16'hC030]=8'h11; mem[16'hC031]=8'hEE; // LI a0,0xEE
+        mem[16'hC032]=8'hFF; mem[16'hC033]=8'h00; // HLT
+        reset; whalt(60);
+        // Now fire IRQ
+        irq_n=0; #200; irq_n=1;
+        whalt(80);
+        chk8(8'hEE,A,"IRQ wake");
+
         // === RESULTS ===
         $display("\n============================");
         $display("PASS: %0d  FAIL: %0d", pass_count, fail_count);

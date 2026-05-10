@@ -40,13 +40,23 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
     // States
     localparam B0=0,B1=1,B2=2,F1=3,EX=4,M1=5,M2=6,HLT=7;
 
+    reg nmi_prev, nmi_pend;
+
+    // NMI edge detect + interrupt check helper
+    wire irq_fire = fie && !irq_n && !skip;
+    wire nmi_fire = nmi_pend && !skip;
+
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             state<=B0; pc<=0; a0<=0;t0<=0;sp<=8'hFF;pl<=0;ph<=0;pg<=0;
             ir_op<=8'hFE;ir_opr<=0; fz<=0;fc<=0;fn<=0;fie<=0;skip<=0;
             addr_bus<=16'hFFFC;mem_rd_n<=0;mem_wr_n<=1;doe<=0;dout<=0;
+            nmi_prev<=1; nmi_pend<=0;
         end else begin
             mem_rd_n<=1;mem_wr_n<=1;doe<=0;
+            // NMI edge detect
+            nmi_prev<=nmi_n;
+            if(nmi_prev && !nmi_n) nmi_pend<=1;
             case(state)
             B0: begin addr_bus<=16'hFFFC; mem_rd_n<=0; state<=B1; end
             B1: begin pc[7:0]<=din; addr_bus<=16'hFFFD; mem_rd_n<=0; state<=B2; end
@@ -193,6 +203,14 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 else if(ir_op==8'hF1) begin fc<=1; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
                 else if(ir_op==8'hF2) begin fie<=1; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
                 else if(ir_op==8'hF3) begin fie<=0; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
+                else if(ir_op==8'hF4) begin // RTI: pop flags, pop PCL, pop PCH
+                    addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=4'd14;
+                end
+                else if(ir_op==8'hF5) begin // TRAP: push PC, push flags, jump to vector 0xFFF6
+                    sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
+                    dout<=pc[15:8]; doe<=1; mem_wr_n<=0;
+                    fie<=0; state<=4'd10; // reuse JAL push sequence, then vector
+                end
                 else if(ir_op==8'hFE) begin addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end // NOP
                 else if(ir_op==8'hFF) begin state<=HLT; end // HLT
                 else begin addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end // unknown→NOP
@@ -229,8 +247,26 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 pc[15:8]<=din;
                 addr_bus<={din,pc[7:0]}; mem_rd_n<=0; state<=F1;
             end
+            4'd14: begin // RTI_S1: latch flags, pop PCL
+                {fn,fc,fz,fie} <= {din[3],din[2],din[1],din[0]};
+                addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=4'd12; // reuse RET_S2/S3
+            end
             HLT: begin
-                if(fie && (!irq_n||!nmi_n)) begin addr_bus<=pc; mem_rd_n<=0; state<=F1; end
+                if(nmi_fire) begin
+                    nmi_pend<=0; fie<=0;
+                    // Read NMI vector at 0xFFFA
+                    addr_bus<=16'hFFFA; mem_rd_n<=0; state<=4'd15;
+                end
+                else if(irq_fire) begin
+                    fie<=0;
+                    // Read IRQ vector at 0xFFFE
+                    addr_bus<=16'hFFFE; mem_rd_n<=0; state<=4'd15;
+                end
+            end
+            4'd15: begin // INT_S1: latch vector low, read vector high
+                pc[7:0]<=din;
+                addr_bus<=addr_bus+16'd1; mem_rd_n<=0;
+                state<=4'd13; // reuse RET_S3 (latch high, start fetch)
             end
             default: state<=B0;
             endcase
