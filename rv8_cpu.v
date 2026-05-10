@@ -26,11 +26,16 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
     wire [7:0] ar; wire aco,az,an;
     rv8_alu ALU(.a(a0),.b(ab),.op(aop),.ci(fc),.r(ar),.co(aco),.z(az),.n(an));
 
-    // Reg read
+    // Reg read - uses din directly (operand byte on bus during EX)
     reg [7:0] rs;
-    always @(*) case(ir_opr[2:0])
-        0:case(ir_opr[3:2]) 0:rs=0;1:rs=1;2:rs=8'hFF;3:rs=8'h80;endcase
-        1:rs=sp;2:rs=a0;3:rs=pl;4:rs=ph;5:rs=t0;6:rs=pg;default:rs=0;endcase
+    always @(*) begin
+        reg [2:0] rsel;
+        rsel = (state==EX) ? din[2:0] : ir_opr[2:0];
+        case(rsel)
+            0:case(din[3:2]) 0:rs=0;1:rs=1;2:rs=8'hFF;3:rs=8'h80;endcase
+            1:rs=sp;2:rs=a0;3:rs=pl;4:rs=ph;5:rs=t0;6:rs=pg;default:rs=0;
+        endcase
+    end
 
     // States
     localparam B0=0,B1=1,B2=2,F1=3,EX=4,M1=5,M2=6,HLT=7;
