@@ -139,12 +139,30 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 end
                 else if(ir_op>=8'h37 && ir_op<=8'h3A) begin // Skip
                     reg sc;
-                    case(ir_op[1:0]) 0:sc=fz; 1:sc=~fz; 2:sc=fc; 3:sc=~fc; endcase
+                    case(ir_op)
+                        8'h37: sc=fz;   // SKIPZ
+                        8'h38: sc=~fz;  // SKIPNZ
+                        8'h39: sc=fc;   // SKIPC
+                        8'h3A: sc=~fc;  // SKIPNC
+                        default: sc=0;
+                    endcase
                     if(sc) skip<=1;
                     addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1;
                 end
                 else if(ir_op==8'h3C) begin // JMP (ptr)
                     pc<={ph,pl}; addr_bus<={ph,pl}; mem_rd_n<=0; state<=F1;
+                end
+                else if(ir_op==8'h3D) begin // JAL (ptr) - push return addr, jump to ptr
+                    // Return address = pc+2 (next instruction after JAL)
+                    // pc is still old value here (non-blocking pc<=pc+2 not yet effective)
+                    sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
+                    dout<=pc[15:8]; // high byte (pc+2 won't cross page for typical code)
+                    doe<=1; mem_wr_n<=0;
+                    state<=4'd10;
+                end
+                else if(ir_op==8'h3E) begin // RET - pop PC
+                    addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0;
+                    state<=4'd12; // RET_S2: latch low, read high
                 end
                 else if(ir_op>=8'h40 && ir_op<=8'h47) begin // Shift/Unary
                     case(ir_op[2:0])
@@ -192,6 +210,24 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
             end
             4'd9: begin // M3: write done, next fetch
                 addr_bus<=pc; mem_rd_n<=0; state<=F1;
+            end
+            4'd10: begin // JAL_S2: push PC low byte (pc is now pc+2 from non-blocking)
+                sp<=sp-8'd1; addr_bus<={8'h30,sp-8'd1};
+                dout<=pc[7:0]; // pc is now updated (pc+2) from previous cycle
+                doe<=1; mem_wr_n<=0;
+                state<=4'd11;
+            end
+            4'd11: begin // JAL_S3: jump to ptr
+                pc<={ph,pl}; addr_bus<={ph,pl}; mem_rd_n<=0; state<=F1;
+            end
+            4'd12: begin // RET_S2: latch PC low, read PC high
+                pc[7:0]<=din;
+                addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0;
+                state<=4'd13;
+            end
+            4'd13: begin // RET_S3: latch PC high, fetch from new PC
+                pc[15:8]<=din;
+                addr_bus<={din,pc[7:0]}; mem_rd_n<=0; state<=F1;
             end
             HLT: begin
                 if(fie && (!irq_n||!nmi_n)) begin addr_bus<=pc; mem_rd_n<=0; state<=F1; end

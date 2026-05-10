@@ -170,6 +170,69 @@ module rv8_tb;
         mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00;
         reset; whalt(80); chk1(0,FC,"CLC");
 
+        // === SKIP ===
+        $display("--- Skip ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h00; // LI a0,0 (Z=? not set yet)
+        mem[16'hC002]=8'h18; mem[16'hC003]=8'h00; // CMPI 0 → Z=1
+        mem[16'hC004]=8'h37; mem[16'hC005]=8'h00; // SKIPZ (Z=1 → skip next)
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hBB; // LI a0,0xBB (should be skipped)
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h00,A,"SKIPZ skipped");
+
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h05; // LI a0,5
+        mem[16'hC002]=8'h18; mem[16'hC003]=8'h05; // CMPI 5 → Z=1
+        mem[16'hC004]=8'h38; mem[16'hC005]=8'h00; // SKIPNZ (Z=1 → don't skip)
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hCC; // LI a0,0xCC (should execute)
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'hCC,A,"SKIPNZ not-skip");
+
+        // === PUSH/POP ===
+        $display("--- Push/Pop ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h42; // LI a0,0x42
+        mem[16'hC002]=8'h2C; mem[16'hC003]=8'h02; // PUSH a0
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'h00; // LI a0,0
+        mem[16'hC006]=8'h2D; mem[16'hC007]=8'h02; // POP a0
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h42,A,"PUSH/POP");
+
+        // === JMP ===
+        $display("--- JMP ---");
+        init_mem; mem[16'hC000]=8'h12; mem[16'hC001]=8'h10; // LI pl,0x10
+        mem[16'hC002]=8'h13; mem[16'hC003]=8'hC0; // LI ph,0xC0
+        mem[16'hC004]=8'h3C; mem[16'hC005]=8'h00; // JMP (ptr) → 0xC010
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hEE; // should be skipped
+        mem[16'hC010]=8'h11; mem[16'hC011]=8'h99; // LI a0,0x99
+        mem[16'hC012]=8'hFF; mem[16'hC013]=8'h00;
+        reset; whalt(80); chk8(8'h99,A,"JMP");
+
+        // === JAL/RET ===
+        $display("--- JAL/RET ---");
+        init_mem; mem[16'hC000]=8'h12; mem[16'hC001]=8'h20; // LI pl,0x20
+        mem[16'hC002]=8'h13; mem[16'hC003]=8'hC0; // LI ph,0xC0
+        mem[16'hC004]=8'h3D; mem[16'hC005]=8'h00; // JAL (ptr) → 0xC020
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00; // HLT (return here)
+        // Subroutine at 0xC020:
+        mem[16'hC020]=8'h11; mem[16'hC021]=8'h77; // LI a0,0x77
+        mem[16'hC022]=8'h3E; mem[16'hC023]=8'h00; // RET
+        reset; whalt(120); chk8(8'h77,A,"JAL/RET");
+
+        // === ZERO PAGE ===
+        $display("--- Zero Page ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'hDE; // LI a0,0xDE
+        mem[16'hC002]=8'h29; mem[16'hC003]=8'h42; // SB a0,[zp+0x42]
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'h00; // LI a0,0
+        mem[16'hC006]=8'h28; mem[16'hC007]=8'h42; // LB a0,[zp+0x42]
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'hDE,A,"zero-page");
+
+        // === ROL/ROR ===
+        $display("--- ROL/ROR ---");
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC (C=1)
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h00; // LI a0,0x00
+        mem[16'hC004]=8'h42; mem[16'hC005]=8'h00; // ROL (shift in C=1)
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'h01,A,"ROL");
+
         // === RESULTS ===
         $display("\n============================");
         $display("PASS: %0d  FAIL: %0d", pass_count, fail_count);
