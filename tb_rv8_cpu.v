@@ -293,6 +293,126 @@ module rv8_tb;
         whalt(80);
         chk8(8'hEE,A,"IRQ wake");
 
+        // === SBC ===
+        $display("--- SBC ---");
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC (C=1)
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h10; // LI a0,0x10
+        mem[16'hC004]=8'h14; mem[16'hC005]=8'h03; // LI t0,3
+        mem[16'hC006]=8'h07; mem[16'hC007]=8'h05; // SBC t0 (0x10-3-0=0x0D)
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h0D,A,"SBC");
+
+        // === BEQ/BCS/BCC/BMI/BPL ===
+        $display("--- Branches ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h00;
+        mem[16'hC002]=8'h18; mem[16'hC003]=8'h00; // CMPI 0→Z=1
+        mem[16'hC004]=8'h30; mem[16'hC005]=8'h02; // BEQ +2
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hBB;
+        mem[16'hC008]=8'h11; mem[16'hC009]=8'hAA;
+        mem[16'hC00A]=8'hFF; mem[16'hC00B]=8'h00;
+        reset; whalt(80); chk8(8'hAA,A,"BEQ");
+
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h80;
+        mem[16'hC002]=8'h18; mem[16'hC003]=8'h00; // CMPI 0→N=1
+        mem[16'hC004]=8'h34; mem[16'hC005]=8'h02; // BMI +2
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hBB;
+        mem[16'hC008]=8'h11; mem[16'hC009]=8'h44;
+        mem[16'hC00A]=8'hFF; mem[16'hC00B]=8'h00;
+        reset; whalt(80); chk8(8'h44,A,"BMI");
+
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'h05;
+        mem[16'hC002]=8'h18; mem[16'hC003]=8'h00; // CMPI 0→N=0
+        mem[16'hC004]=8'h35; mem[16'hC005]=8'h02; // BPL +2
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'hBB;
+        mem[16'hC008]=8'h11; mem[16'hC009]=8'h33;
+        mem[16'hC00A]=8'hFF; mem[16'hC00B]=8'h00;
+        reset; whalt(80); chk8(8'h33,A,"BPL");
+
+        // === SKIPC/SKIPNC ===
+        $display("--- SKIPC/SKIPNC ---");
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC
+        mem[16'hC002]=8'h39; mem[16'hC003]=8'h00; // SKIPC (C=1→skip)
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'hBB;
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'h22;
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h22,A,"SKIPC");
+
+        init_mem; mem[16'hC000]=8'hF0; mem[16'hC001]=8'h00; // CLC
+        mem[16'hC002]=8'h3A; mem[16'hC003]=8'h00; // SKIPNC (C=0→skip)
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'hBB;
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'h11;
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h11,A,"SKIPNC");
+
+        // === DEC16/ADD16 ===
+        $display("--- DEC16/ADD16 ---");
+        init_mem; mem[16'hC000]=8'h12; mem[16'hC001]=8'h00;
+        mem[16'hC002]=8'h13; mem[16'hC003]=8'h10; // ptr=0x1000
+        mem[16'hC004]=8'h49; mem[16'hC005]=8'h00; // DEC16→0x0FFF
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'hFF,PL,"DEC16 pl"); chk8(8'h0F,PH,"DEC16 ph");
+
+        init_mem; mem[16'hC000]=8'h12; mem[16'hC001]=8'hF0;
+        mem[16'hC002]=8'h13; mem[16'hC003]=8'h10; // ptr=0x10F0
+        mem[16'hC004]=8'h4A; mem[16'hC005]=8'h20; // ADD16 0x20→0x1110
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'h10,PL,"ADD16 pl"); chk8(8'h11,PH,"ADD16 ph");
+
+        // === EI/DI ===
+        $display("--- EI/DI ---");
+        init_mem; mem[16'hC000]=8'hF2; mem[16'hC001]=8'h00; // EI
+        mem[16'hC002]=8'hFF; mem[16'hC003]=8'h00;
+        reset; whalt(80); chk1(1,CPU.fie,"EI");
+
+        init_mem; mem[16'hC000]=8'hF2; mem[16'hC001]=8'h00;
+        mem[16'hC002]=8'hF3; mem[16'hC003]=8'h00; // DI
+        mem[16'hC004]=8'hFF; mem[16'hC005]=8'h00;
+        reset; whalt(80); chk1(0,CPU.fie,"DI");
+
+        // === ROR ===
+        $display("--- ROR ---");
+        init_mem; mem[16'hC000]=8'hF1; mem[16'hC001]=8'h00; // SEC
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h00; // LI a0,0
+        mem[16'hC004]=8'h43; mem[16'hC005]=8'h00; // ROR (C=1 into bit7)
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'h80,A,"ROR");
+
+        // === BRA ===
+        $display("--- BRA ---");
+        init_mem; mem[16'hC000]=8'h36; mem[16'hC001]=8'h04; // BRA +4
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'hBB;
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'hBB;
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'h77;
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'h77,A,"BRA");
+
+        // === LI all regs ===
+        $display("--- LI all ---");
+        init_mem; mem[16'hC000]=8'h10; mem[16'hC001]=8'hAA;
+        mem[16'hC002]=8'h14; mem[16'hC003]=8'hBB;
+        mem[16'hC004]=8'h15; mem[16'hC005]=8'hCC;
+        mem[16'hC006]=8'hFF; mem[16'hC007]=8'h00;
+        reset; whalt(80); chk8(8'hAA,S,"LI sp"); chk8(8'hBB,T,"LI t0"); chk8(8'hCC,PG,"LI pg");
+
+        // === MOV ===
+        $display("--- MOV ---");
+        init_mem; mem[16'hC000]=8'h11; mem[16'hC001]=8'hAB;
+        mem[16'hC002]=8'h24; mem[16'hC003]=8'h05; // MOV t0,a0
+        mem[16'hC004]=8'h11; mem[16'hC005]=8'h00;
+        mem[16'hC006]=8'h25; mem[16'hC007]=8'h05; // MOV a0,t0
+        mem[16'hC008]=8'hFF; mem[16'hC009]=8'h00;
+        reset; whalt(80); chk8(8'hAB,A,"MOV");
+
+        // === SP+imm ===
+        $display("--- SP+imm ---");
+        init_mem; mem[16'hC000]=8'h10; mem[16'hC001]=8'hF0; // LI sp,0xF0
+        mem[16'hC002]=8'h11; mem[16'hC003]=8'h99;
+        mem[16'hC004]=8'h27; mem[16'hC005]=8'h02; // SB [sp+2]
+        mem[16'hC006]=8'h11; mem[16'hC007]=8'h00;
+        mem[16'hC008]=8'h26; mem[16'hC009]=8'h02; // LB [sp+2]
+        mem[16'hC00A]=8'hFF; mem[16'hC00B]=8'h00;
+        reset; whalt(80); chk8(8'h99,A,"sp+imm");
+
         // === RESULTS ===
         $display("\n============================");
         $display("PASS: %0d  FAIL: %0d", pass_count, fail_count);

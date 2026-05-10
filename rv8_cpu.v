@@ -77,7 +77,7 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                         4: tmp = {1'b0, a0 ^ rs};   // XOR
                         5: tmp = a0 - rs;           // CMP = SUB without write
                         6: tmp = a0 + rs + fc;      // ADC (with carry)
-                        7: tmp = a0 - rs - ~fc;     // SBC (with borrow)
+                        7: tmp = a0 - rs - {8'd0,~fc}; // SBC (borrow=!C)
                         default: tmp = 0;
                     endcase
                     if(ir_op!=8'h05) a0<=tmp[7:0]; // CMP doesn't write
