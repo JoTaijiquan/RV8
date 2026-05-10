@@ -1,627 +1,200 @@
-# RV8 — Architecture Design
+# RV8 — Architecture (matches verified Verilog)
 
-**Project**: RV8 Minimal Educational CPU  
-**Version**: 1.0  
-**Date**: 2026-05-11  
-**Phase**: 3 — Architecture
+**Source of truth**: `rtl/rv8_cpu.v` (69 tests pass)
 
 ---
 
 ## 1. Block Diagram
 
 ```
-                          ┌─────────────────────────────────────────┐
-                          │              ADDRESS BUS (16-bit)        │
-                          └──┬────────┬────────┬────────┬───────────┘
-                             │        │        │        │
-                    ┌────────▼──┐  ┌──▼────┐  ┌▼──────┐ │
-                    │    PC     │  │ PTR   │  │ STACK │ │  ADDR MUX
-                    │  (16-bit) │  │{ph,pl}│  │{30,sp}│ │  selects source
-                    └────────┬──┘  └──┬────┘  └┬──────┘ │
-                             │        │        │        │
-                             └────────┴────────┴────────┘
-                                         │
-                          ┌──────────────▼──────────────────────────┐
-                          │              DATA BUS (8-bit)            │
-                          └──┬──────┬──────┬──────┬──────┬──────────┘
-                             │      │      │      │      │
-                    ┌────────▼┐  ┌──▼───┐  │  ┌───▼──┐  │
-                    │   IR    │  │ REG  │  │  │ ALU  │  │
-                    │(16-bit) │  │ FILE │  │  │(8-bit│  │
-                    │op+operand│  │sp,a0,│  │  │ +flags│  │
-                    └────┬────┘  │pl,ph,│  │  └───┬──┘  │
-                         │       │t0,pg │  │      │     │
-                         │       └──┬───┘  │      │     │
-                         │          │      │      │     │
-                    ┌────▼──────────▼──────▼──────▼─────▼───────────┐
-                    │           CONTROL UNIT                         │
-                    │   Direct-encoded FSM + prefetch logic          │
-                    │   Inputs: IR opcode, flags, state              │
-                    │   Outputs: all control signals                 │
-                    └───────────────────────────────────────────────┘
+                    ┌──────────────────────────────────────┐
+                    │           ADDRESS BUS (16-bit)        │
+                    └──┬──────┬──────┬──────┬──────┬───────┘
+                       │      │      │      │      │
+                    ┌──▼──┐┌──▼──┐┌──▼──┐┌──▼──┐┌──▼──┐
+                    │ PC  ││ PTR ││STACK││ ZP  ││VECT │
+                    │16bit││ph:pl││30:sp││00:im││FF:im│
+                    └──┬──┘└──┬──┘└──┬──┘└──┬──┘└──┬──┘
+                       └──────┴──────┴──────┴──────┘
+                                     │
+                    ┌────────────────▼─────────────────────┐
+                    │           DATA BUS (8-bit)            │
+                    └──┬──────┬──────┬──────┬──────────────┘
+                       │      │      │      │
+                    ┌──▼──┐┌──▼──┐┌──▼──┐┌──▼──┐
+                    │ IR  ││REGS ││ ALU ││MEM  │
+                    │op+op││a0,t0││8-bit││R/W  │
+                    │     ││sp,pg││     ││     │
+                    └─────┘└─────┘└─────┘└─────┘
+                                     │
+                    ┌────────────────▼─────────────────────┐
+                    │         CONTROL (state machine)       │
+                    │   17 states, opcode-range decode      │
+                    └──────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Datapath
-
-### 2.1 Data Flow
+## 2. State Machine (17 states)
 
 ```
-Memory ──► Data Bus ──► IR (byte 0 = opcode, byte 1 = operand)
-                    ──► Register File (write)
-                    ──► ALU input B
-                    
-Register File ──► ALU input A (always a0 for ALU ops)
-              ──► Data Bus (for store operations)
-              ──► Address Bus low (pl, sp)
-              ──► Address Bus high (ph, pg, 0x30, 0x00)
+BOOT:  B0 → B1 → B2 → F1 (read reset vector, start fetch)
 
-ALU ──► Data Bus ──► Register File (write back to a0)
-    ──► Flags (Z, C, N)
+NORMAL: F1 → EX → F1  (2-cycle: fetch opcode, fetch operand + execute)
+                  ↘ M1 → F1  (3-cycle: + memory read)
+                  ↘ M2 → M3 → F1  (4-cycle: + memory write)
+                  ↘ S10 → S11 → F1  (JAL: push PCH, push PCL, jump)
+                  ↘ S10 → S16 → S11 → S15 → S13 → F1  (TRAP: push+flags+vector)
+                  ↘ S12 → S13 → F1  (RET: pop PCL, pop PCH)
+                  ↘ S14 → S12 → S13 → F1  (RTI: pop flags, pop PC)
 
-PC ──► Address Bus (during fetch)
-   ◄── PC + 2 (normal increment)
-   ◄── PC + offset (branch taken)
-   ◄── {ph, pl} (jump indirect)
-   ◄── Vector address (interrupt)
+HALT:  HLT (wake on IRQ/NMI → S15 → S13 → F1)
 ```
 
-### 2.2 Address Bus Sources
-
-| Source | High byte | Low byte | Used by |
-|--------|-----------|----------|---------|
-| PC | PC[15:8] | PC[7:0] | Instruction fetch |
-| Pointer | ph | pl | LB/SB (ptr), (ptr+) |
-| Stack | 0x30 (fixed) | sp | PUSH, POP, JAL, RET |
-| Stack-relative | 0x30 (fixed) | sp + imm8 | LB/SB [sp+imm] |
-| Zero-page | 0x00 (fixed) | imm8 | LB/SB [zp+imm] |
-| Page-relative | pg | imm8 | LB/SB [pg:imm] |
-| Vector | 0xFF | vector_lo | Interrupt/TRAP entry |
-
-### 2.3 ALU Operations
-
-| alu_op[2:0] | Operation | Output |
-|:-----------:|-----------|--------|
-| 000 | ADD | A + B + Cin |
-| 001 | SUB | A - B - !Cin |
-| 010 | AND | A & B |
-| 011 | OR | A \| B |
-| 100 | XOR | A ^ B |
-| 101 | SHL | {A[6:0], 0} |
-| 110 | SHR | {0, A[7:1]} |
-| 111 | PASS_B | B (passthrough for LI/MOV) |
-
-Flags set: Z = (result == 0), C = carry/borrow out, N = result[7]
+| State | # | Action |
+|-------|:-:|--------|
+| B0 | 0 | addr=0xFFFC, read |
+| B1 | 1 | latch PC_lo, addr=0xFFFD, read |
+| B2 | 2 | latch PC_hi, addr=PC, read |
+| F1 | 3 | latch opcode, addr=PC+1, read |
+| EX | 4 | latch operand, execute instruction, PC+=2 |
+| M1 | 5 | latch memory read → a0 |
+| M2 | 6 | drive data_out, assert write |
+| HLT | 7 | halted (wake on interrupt) |
+| M3 | 9 | write done, next fetch |
+| JAL_S2 | 10 | push PCL |
+| JAL_S3 | 11 | jump to {ph,pl} or read vector |
+| RET_S2 | 12 | latch PCL, read PCH |
+| RET_S3 | 13 | latch PCH, fetch from new PC |
+| RTI_S1 | 14 | latch flags, pop PCL |
+| INT_S1 | 15 | latch vector low, read vector high |
+| TRAP_S3 | 16 | push flags byte |
 
 ---
 
-## 3. Control FSM
+## 3. Datapath
 
-### 3.1 States
-
+### Internal paths (no bus conflict):
 ```
-         ┌──────────────────────────────────────────┐
-         │                                          │
-         ▼                                          │
-    ┌─────────┐     ┌─────────┐     ┌─────────┐    │
-    │   S0    │────►│   S1    │────►│   S2    │────┘ (most instructions)
-    │ FETCH0  │     │ FETCH1  │     │ EXECUTE │
-    │         │     │+EXECUTE │     │ (mem    │
-    │ addr=PC │     │ prev    │     │  access)│
-    │ read mem│     │ instr   │     │         │
-    │ →prefetch     │         │     │         │
-    └─────────┘     └─────────┘     └─────────┘
-                                         │
-                                         │ (JAL/RET need more)
-                                         ▼
-                                    ┌─────────┐
-                                    │   S3    │
-                                    │ STACK   │
-                                    │ push/pop│
-                                    └────┬────┘
-                                         │
-                                         ▼
-                                    ┌─────────┐
-                                    │   S4    │
-                                    │ STACK2  │
-                                    │ (JAL:   │
-                                    │  push   │
-                                    │  2nd    │
-                                    │  byte)  │
-                                    └─────────┘
+Registers (a0,t0,sp,pg) → ALU input A (a0 always)
+Operand byte / register → ALU input B
+ALU result → register write (a0 or data_out)
 ```
 
-### 3.2 Fetch/Execute Overlap Timing
-
+### External bus (memory access):
 ```
-Clock:    ──┐  ┌──┐  ┌──┐  ┌──┐  ┌──┐  ┌──┐  ┌──
-            └──┘  └──┘  └──┘  └──┘  └──┘  └──┘
-
-State:    │ S0  │ S1  │ S0  │ S1  │ S0  │ S1  │
-          │     │     │     │     │     │     │
-
-Action:   │FETCH│FETCH│FETCH│FETCH│FETCH│FETCH│
-          │op[0]│op[1]│op[0]│op[1]│op[0]│op[1]│
-          │     │+EXEC│     │+EXEC│     │+EXEC│
-          │     │instr│     │instr│     │instr│
-          │     │ [0] │     │ [1] │     │ [2] │
-
-Instr:    │◄─ instr 0 ─►│◄─ instr 1 ─►│◄─ instr 2 ─►│
-          │  2 cycles   │  2 cycles   │  2 cycles   │
+Address mux → address bus → memory
+Memory → data bus → IR latch / register load
+Register → data bus → memory (for stores)
 ```
 
-**Most instructions: 2 cycles.** S0 fetches opcode, S1 fetches operand AND executes previous instruction simultaneously.
-
-For memory-access instructions (LB, SB, PUSH, POP): need S2 for the data memory access (bus is busy).
-
-### 3.3 Cycle Count (with overlap)
-
-| Instruction type | States used | Total cycles |
-|-----------------|-------------|:------------:|
-| ALU reg, ALU imm, shift, MOV, LI, skip | S0 + S1 | **2** |
-| LB/SB (ptr, zp, pg, sp+off) | S0 + S1 + S2 | **3** |
-| Branch (not taken) | S0 + S1 | **2** |
-| Branch (taken) | S0 + S1 + S2 (reload PC) | **3** |
-| JMP (ptr) | S0 + S1 | **2** |
-| PUSH | S0 + S1 + S2 (sp--, write) | **3** |
-| POP | S0 + S1 + S2 (read, sp++) | **3** |
-| JAL | S0 + S1 + S2 + S3 + S4 (push PCH, push PCL, load PC) | **5** |
-| RET | S0 + S1 + S2 + S3 (pop PCL, pop PCH) | **4** |
-| Interrupt entry | S2 + S3 + S4 + S0 (push PCH, push PCL, push flags, load vector) | **4** (+ current instr) |
+**Key**: ALU operates on internal wires. External bus only used for memory read/write.
 
 ---
 
-## 4. Direct-Encoded Instruction Format
+## 4. Chip Mapping (23 CPU chips)
 
-### 4.1 Opcode Byte (Byte 0) Bit Fields
-
-```
-Bit 7  6  5  4  3  2  1  0
-    [  unit  ][ operation ][ reg/mode ]
-     3 bits     3 bits       2 bits
-```
-
-| Bits [7:5] | Unit | Directly enables |
-|:----------:|------|-----------------|
-| 000 | ALU | ALU chip + flags write |
-| 001 | Immediate | Immediate bus mux + register write |
-| 010 | Load/Store | Memory address mux + mem read/write |
-| 011 | Branch/Skip/Jump | PC load logic + flag check |
-| 100 | Shift/Unary | Shift logic + register write |
-| 101 | Pointer | Pointer increment logic |
-| 111 | System | Flag set/clear, interrupt, halt |
-
-**Bits [7:5] wire directly to a 74HC138** → one-hot unit enable. No decode logic needed.
-
-**Bits [4:2]** wire directly to ALU op select, shift type, branch condition, or LI register select depending on unit.
-
-**Bits [1:0]** wire directly to register mux select.
-
-### 4.2 Operand Byte (Byte 1)
-
-| For instruction type | Byte 1 meaning |
-|---------------------|----------------|
-| ALU register | bits [2:0] = source register |
-| Immediate | 8-bit value |
-| Load/Store (ptr) | bits [2:0] = register |
-| Load/Store (addressed) | 8-bit offset/address |
-| Branch | signed 8-bit offset |
-| Skip | 0x00 (unused) |
-| Jump | 0x00 (unused) |
-| Shift/Unary | bits [2:0] = target register |
-| System | trap number (for TRAP) or 0x00 |
+| # | Part | Function | Pins used |
+|---|------|----------|-----------|
+| 1-4 | 74HC161 ×4 | PC (16-bit counter with parallel load) | All |
+| 5-6 | 74HC574 ×2 | IR opcode + operand (clock-gated) | All |
+| 7 | 74HC574 | a0 (accumulator) | All |
+| 8 | 74HC574 | t0 (temporary) | All |
+| 9 | 74HC574 | sp (stack pointer, 8-bit) | All |
+| 10 | 74HC574 | pg (page register) | All |
+| 11 | 74HC161 | pl (pointer low, count for ptr+) | All |
+| 12 | 74HC161 | ph (pointer high, carry from pl) | All |
+| 13-14 | 74HC283 ×2 | ALU 8-bit adder | All |
+| 15 | 74HC86 | ALU XOR (SUB invert + XOR op) | All |
+| 16-17 | 74HC157 ×2 | Address mux low + high byte | All |
+| 18 | 74HC138 | Address decode + unit select | All |
+| 19 | 74HC245 | Data bus buffer (bidirectional) | All |
+| 20-21 | 74HC74 ×2 | Flags (Z,C,N,IE) + state + skip + NMI | All |
+| 22-23 | 74HC08+32 | AND/OR control logic | Partial |
 
 ---
 
-## 5. Module Interfaces (Verilog)
+## 5. Timing
 
-### 5.1 Top-Level
-
-```verilog
-module rv8_cpu (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire        nmi_n,
-    input  wire        irq_n,
-    output wire [15:0] addr,
-    inout  wire [7:0]  data,
-    output wire        rd_n,
-    output wire        wr_n,
-    output wire        halt
-);
+### 2-cycle instruction (ALU, LI, shift, MOV, branch-not-taken, skip, NOP):
+```
+CLK:  ─┐ ┌─┐ ┌─
+       └─┘ └─┘
+State: F1  EX  F1
+Bus:   [op][opr][next_op]
 ```
 
-### 5.2 ALU
-
-```verilog
-module rv8_alu (
-    input  wire [7:0]  a,        // always a0
-    input  wire [7:0]  b,        // register or immediate
-    input  wire [2:0]  op,       // from opcode bits [4:2]
-    input  wire        carry_in,
-    output wire [7:0]  result,
-    output wire        carry_out,
-    output wire        zero,
-    output wire        negative
-);
+### 3-cycle instruction (LB, POP, branch-taken):
+```
+State: F1  EX  M1  F1
+Bus:   [op][opr][data][next_op]
 ```
 
-### 5.3 Register File
-
-```verilog
-module rv8_regfile (
-    input  wire        clk,
-    input  wire        we,
-    input  wire [2:0]  rd_sel,   // destination register
-    input  wire [2:0]  rs_sel,   // source register (from operand byte)
-    input  wire [7:0]  wr_data,
-    output wire [7:0]  rd_data,  // source register value
-    output wire [7:0]  a0,       // always available (ALU input A)
-    output wire [7:0]  sp,
-    output wire [7:0]  pl,
-    output wire [7:0]  ph,
-    output wire [7:0]  pg,
-    input  wire [1:0]  const_sel // constant generator select
-);
+### 4-cycle instruction (SB, PUSH):
+```
+State: F1  EX  M2  M3  F1
+Bus:   [op][opr][wr][--][next_op]
 ```
 
-### 5.4 Program Counter
-
-```verilog
-module rv8_pc (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire        inc,       // PC += 1
-    input  wire        load,      // PC = load_val
-    input  wire        branch,    // PC = PC + offset
-    input  wire [15:0] load_val,  // from {ph,pl} or vector
-    input  wire [7:0]  offset,    // signed branch offset
-    output wire [15:0] pc_out
-);
+### 5-cycle (JAL):
 ```
-
-### 5.5 Control Unit
-
-```verilog
-module rv8_control (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire [7:0]  opcode,    // IR byte 0
-    input  wire [7:0]  operand,   // IR byte 1
-    input  wire        flag_z,
-    input  wire        flag_c,
-    input  wire        flag_n,
-    input  wire        flag_ie,
-    input  wire        nmi_n,
-    input  wire        irq_n,
-    // Control outputs
-    output wire        reg_we,
-    output wire        mem_rd,
-    output wire        mem_wr,
-    output wire [2:0]  alu_op,
-    output wire [2:0]  addr_src,  // PC/ptr/stack/zp/pg/vector
-    output wire        pc_inc,
-    output wire        pc_load,
-    output wire        pc_branch,
-    output wire        flags_we,
-    output wire        ptr_inc,
-    output wire        sp_inc,
-    output wire        sp_dec,
-    output wire        skip_next,
-    output wire        halt_out,
-    output wire [2:0]  state      // current FSM state (for debug LEDs)
-);
+State: F1  EX  S10  S11  F1
+Bus:   [op][opr][push_h][push_l][target_op]
 ```
 
 ---
 
-## 6. Timing Diagram
+## 6. Address Sources
 
-### 6.1 Simple ALU Instruction (2 cycles)
-
-```
-CLK:     ───┐  ┌───┐  ┌───┐  ┌───
-            └──┘   └──┘   └──┘
-
-State:   │  S0     │  S1     │  S0     │
-         │         │         │         │
-
-ADDR:    │  PC     │  PC+1   │  PC+2   │
-         │         │         │         │
-
-DATA:    │  opcode │ operand │  next_op│
-         │  (in)   │  (in)   │  (in)   │
-
-Action:  │ Latch   │ Latch   │ Latch   │
-         │ opcode  │ operand │ next op │
-         │ into IR │ +EXEC   │         │
-         │         │ prev    │         │
-         │         │ instr   │         │
-
-PC:      │  +1     │  +1     │  +1     │
-```
-
-### 6.2 Memory Load Instruction (3 cycles)
-
-```
-CLK:     ───┐  ┌───┐  ┌───┐  ┌───┐  ┌───
-            └──┘   └──┘   └──┘   └──┘
-
-State:   │  S0     │  S1     │  S2     │  S0     │
-
-ADDR:    │  PC     │  PC+1   │ {pg,imm}│  PC+2   │
-         │         │         │ (data)  │         │
-
-DATA:    │  opcode │ operand │ mem_data│  next_op│
-         │         │         │ (read)  │         │
-
-Action:  │ Fetch   │ Fetch   │ Read    │ Fetch   │
-         │ opcode  │ operand │ memory  │ next    │
-         │         │ +decode │ →a0     │ opcode  │
-```
-
-### 6.3 Branch Taken (3 cycles)
-
-```
-CLK:     ───┐  ┌───┐  ┌───┐  ┌───┐  ┌───
-            └──┘   └──┘   └──┘   └──┘
-
-State:   │  S0     │  S1     │  S2     │  S0     │
-
-ADDR:    │  PC     │  PC+1   │  --     │ new_PC  │
-
-Action:  │ Fetch   │ Fetch   │ Compute │ Fetch   │
-         │ opcode  │ offset  │ PC+off  │ from    │
-         │         │ +check  │ load PC │ new PC  │
-         │         │ flags   │         │         │
-```
+| Sel | High byte | Low byte | Used by |
+|:---:|-----------|----------|---------|
+| 0 | PC[15:8] | PC[7:0] | Fetch |
+| 1 | ph | pl | LB/SB (ptr) |
+| 2 | 0x30 | sp | PUSH/POP/JAL/RET |
+| 3 | 0x00 | imm8 | Zero-page |
+| 4 | pg | imm8 | Page-relative |
+| 5 | 0x30 | sp+imm8 | Stack-relative |
+| 6 | 0xFF | vector_lo | Interrupt vectors |
 
 ---
 
-## 7. Chip-to-Signal Mapping (20 CPU chips)
+## 7. Key Design Decisions (verified correct)
 
-| Chip | Part | Signals driven |
-|------|------|---------------|
-| U1 | 74HC161 | PC[3:0], carry out to U2 |
-| U2 | 74HC161 | PC[7:4], carry out to U3 |
-| U3 | 74HC161 | PC[11:8], carry out to U4 |
-| U4 | 74HC161 | PC[15:12] + FSM state[1:0] (shared) |
-| U5 | 74HC574 | IR byte 0 (opcode latch) |
-| U6 | 74HC574 | IR byte 1 (operand latch) / prefetch |
-| U7 | 74HC574 | Registers: a0 |
-| U8 | 74HC574 | Registers: t0 + sp (nibble-shared or separate) |
-| U9 | 74HC574 | Registers: pl + ph |
-| U10 | 74HC574 | Registers: pg + constant gen output |
-| U11 | 74HC283 | ALU adder low nibble |
-| U12 | 74HC283 | ALU adder high nibble |
-| U13 | 74HC86 | ALU XOR (for subtract invert + XOR op) |
-| U14 | 74HC08 | ALU AND + flag logic |
-| U15 | 74HC32 | ALU OR + control signal combining |
-| U16 | 74HC157 | Address mux low byte (4× 2:1) |
-| U17 | 74HC157 | Address mux high byte (4× 2:1) |
-| U18 | 74HC138 | Unit decode (opcode[7:5] → unit enable) |
-| U19 | 74HC245 | Data bus buffer (bidirectional) |
-| U20 | 74HC74 | Flags (Z, C, N, IE) + skip FF + NMI edge detect |
+| Decision | Rationale | Verified by |
+|----------|-----------|-------------|
+| Opcode-range decode (not bit-field) | ISA opcodes aren't bit-aligned to units | All 69 tests |
+| Inline ALU computation in EX state | Combinational ALU module can't feedback in same clk | ADDI/SUBI tests |
+| Non-overlapping const_sel bits [4:3] | Avoids conflict with reg select bits [2:0] | Const gen tests |
+| 5-bit state register | 17 states > 16 (4-bit limit) | TRAP/RTI tests |
+| SBC uses `{8'd0, ~fc}` for borrow | Prevents sign-extension of 1-bit `~fc` | SBC test |
+| TRAP sets ptr before push sequence | Vector read happens after push completes | TRAP test |
+| NMI/IRQ read vector via states 15→13 | Reuses RET_S3 for PC load | IRQ/NMI tests |
+| Skip flag checked at EX entry | Suppresses entire instruction | SKIP tests |
 
 ---
 
-## 8. Bus Protocol
+## 8. Performance
 
-### 8.1 Memory Read
-
-```
-         ┌─────────────────────────────┐
-ADDR:    │  Valid address              │
-         └─────────────────────────────┘
-              ┌────────────────────────┐
-/RD:     ─────┘                        └─────
-                        ┌──────────────┐
-DATA:    ───────────────│  Valid data   │─────  (driven by memory)
-                        └──────────────┘
-                                    ▲
-                              CPU latches here (rising CLK)
-```
-
-### 8.2 Memory Write
-
-```
-         ┌─────────────────────────────┐
-ADDR:    │  Valid address              │
-         └─────────────────────────────┘
-         ┌─────────────────────────────┐
-DATA:    │  Valid data (from CPU)      │
-         └─────────────────────────────┘
-                   ┌───────────────┐
-/WR:     ──────────┘               └──────────
-                                ▲
-                          Memory latches here (rising /WR)
-```
+| Metric | Value |
+|--------|-------|
+| Clock | 3.5 MHz (breadboard) |
+| Avg cycles/instruction | ~2.5 |
+| Instructions/sec | ~1.4M |
+| BASIC lines/sec | ~400 |
 
 ---
 
-## 9. Interrupt Sequence
+## 9. Gate Count (from chip list)
 
-```
-Normal execution:  ... S0 S1 S0 S1 S0 S1 ...
-                                    ▲
-                              IRQ detected (between instructions)
-                                    │
-Interrupt entry:              S2    S3    S4    S0
-                              push  push  push  fetch
-                              PCH   PCL   flags from
-                                                vector
-
-Vector fetch: addr = 0xFFFA (NMI) or 0xFFFE (IRQ) or 0xFFF6 (TRAP)
-PC loaded from vector, IE cleared, execution continues from ISR.
-```
-
----
-
-## 10. Conditional Skip Implementation
-
-```
-SKIPZ instruction detected:
-  → Set skip_flag flip-flop if Z==1
-  → Next instruction fetches normally (S0, S1)
-  → But reg_we, mem_wr, pc_load, sp_inc/dec are all AND-gated with !skip_flag
-  → Instruction executes as NOP (no side effects)
-  → skip_flag auto-clears after one instruction
-```
-
-Cost: 1 flip-flop (in U20) + 1 AND gate per write-enable signal (absorbed into existing logic).
-
----
-
-## 11. Constant Generator Implementation
-
-```
-Register select = 000 (x0/c0):
-  → Output mux selects from:
-    operand[3:2] == 00 → 0x00
-    operand[3:2] == 01 → 0x01
-    operand[3:2] == 10 → 0xFF
-    operand[3:2] == 11 → 0x80
-
-Hardware: 1× 74HC157 (quad 2:1 mux) configured as 4-input selector
-  → Directly wired to operand byte bits [3:2]
-  → Output feeds into ALU input B when register select = 000
-```
-
----
-
-## 12. Design Verification Checklist
-
-Before proceeding to Verilog (Phase 4), verify:
-
-- [x] All 68 instructions have unambiguous encoding (no opcode conflicts) ✅
-- [x] Register write timing: edge-triggered 574 is correct ✅
-- [x] Constant generator encoding: context-dependent, no conflict ✅
-- [x] Bus conflict in S1: RESOLVED — ALU uses internal register paths, not external data bus
-- [x] IR corruption during S2: RESOLVED — IR clock gated (only loads during S0/S1)
-- [x] PC/state counter sharing: RESOLVED — separate state counter (74HC74 spare FFs)
-- [x] Address mux 7 sources: RESOLVED — 2-stage mux (see section 13)
-- [x] Branch flush: RESOLVED — flush flag discards prefetch, +1 cycle (already in timing)
-- [x] Interrupt vs prefetch: RESOLVED — interrupt at end of S1, return addr = current PC
-- [x] Stack-relative adder: RESOLVED — reuse main ALU during S1 (ALU idle during fetch)
-- [x] SKIP suppresses all cycles: RESOLVED — skip flag gates ALL write-enables for full instruction
-- [x] 74HC138 spurious decode: RESOLVED — enable pin gated by execute-phase state signal
-- [x] Stack overflow detection: confirmed working (NMI on SP wrap)
-
----
-
-## 13. Architecture Fixes (from verification)
-
-### Fix C1: Internal vs External Bus
-
-```
-EXTERNAL data bus: Only used for memory read/write
-  - S0: memory → prefetch latch (read)
-  - S1: memory → operand latch (read)
-  - S2: memory ↔ register (read or write)
-
-INTERNAL paths (no bus conflict):
-  - Register file output → ALU input A (direct wire)
-  - Operand latch / register → ALU input B (mux, direct wire)
-  - ALU output → register file write port (direct wire)
-  - These NEVER touch the external data bus
-```
-
-The ALU and register file communicate via **internal wires**, not the shared memory bus. This is standard practice (same as 6502, Z80, etc.).
-
-### Fix C2: State Counter Separation
-
-State counter uses **2 spare flip-flops in U20 (74HC74)** — the flags chip already has 6 flip-flops (Z, C, N, IE, skip, NMI_edge). A 74HC74 has only 2 FFs, so we need the state bits elsewhere.
-
-**Solution**: Use U4 (74HC161) as a **dedicated 3-bit state counter** (S0-S4). PC becomes 3× 74HC161 = 12-bit address space (4096 bytes directly addressable). For full 16-bit: use pg register as upper 4 bits for code above 4KB.
-
-**Alternative (better)**: Keep 4× 74HC161 for full 16-bit PC. Add 1× 74HC74 for 2-bit state counter. **+1 chip (total: 21 CPU chips).**
-
-### Fix H1: Address Mux (7 sources)
-
-2-stage approach:
-
-```
-Stage 1 (low byte): 74HC157 (4:1 mux)
-  Select 0: PC[7:0]
-  Select 1: pl
-  Select 2: sp (or sp+offset from ALU)
-  Select 3: operand byte (imm8 for zp/pg addressing)
-
-Stage 2 (high byte): 74HC157 (4:1 mux)
-  Select 0: PC[15:8]
-  Select 1: ph
-  Select 2: 0x30 (hardwired for stack)
-  Select 3: pg (or 0x00 for zero-page — selected by extra gate)
-```
-
-For zero-page (high=0x00) vs page-relative (high=pg): one AND gate forces high byte to 0 when zero-page mode active. Absorbed into existing logic.
-
-For vector fetch (high=0xFF): temporarily override high-byte mux during interrupt entry. One OR gate forces all high bits to 1.
-
-**Net: 2× 74HC157 is sufficient with clever gating. No extra chip needed.**
-
-### Fix H4: Stack-Relative Adder
-
-During S1, the main ALU is idle (it executed the previous instruction's ALU op, result already latched). Reuse it:
-
-```
-S1 (for stack-relative instructions):
-  ALU input A = sp (from register file)
-  ALU input B = operand byte (immediate offset)
-  ALU op = ADD
-  ALU output → address bus low byte (via mux)
-```
-
-This requires: ALU output routable to address mux input. Add one path from ALU result to the low-byte address mux (Stage 1, select 2). **No extra chip — just a wire.**
-
----
-
-## 14. Revised Chip Count (post-verification, 2nd pass)
-
-| Chip | Part | Function |
-|------|------|----------|
-| U1 | 74HC161 | PC[3:0] |
-| U2 | 74HC161 | PC[7:4] |
-| U3 | 74HC161 | PC[11:8] |
-| U4 | 74HC161 | PC[15:12] |
-| U5 | 74HC574 | IR byte 0 (opcode) — clock gated to S0 only |
-| U6 | 74HC574 | IR byte 1 (operand) — clock gated to S1 only |
-| U7 | 74HC574 | Register: a0 (accumulator) |
-| U8 | 74HC574 | Register: t0 (temporary) |
-| U9 | 74HC574 | Register: sp (stack pointer, 8-bit) |
-| U10 | 74HC574 | Register: pg (page register) |
-| U11 | 74HC161 | Register: pl (pointer low) — count for ptr+ |
-| U12 | 74HC161 | Register: ph (pointer high) — carry from pl |
-| U13 | 74HC283 | ALU adder low nibble |
-| U14 | 74HC283 | ALU adder high nibble |
-| U15 | 74HC86 | ALU XOR (subtract invert + XOR op) |
-| U16 | 74HC157 | Address mux low byte (4:1) |
-| U17 | 74HC157 | Address mux high byte (4:1) |
-| U18 | 74HC138 | Unit decode (opcode[7:5]) — enable gated by state |
-| U19 | 74HC245 | Data bus buffer (bidirectional) |
-| U20 | 74HC74 | Flags (Z, C) + state counter (2-bit) |
-| U21 | 74HC74 | Flags (N, IE) + skip FF + NMI edge detect |
-| U22 | 74HC08 | AND: IR gating, skip gating, interrupt gating, control |
-| U23 | 74HC32 | OR: signal combining, vector override, carry logic |
-| **23 chips** | | |
-
-### Key decisions from 2nd-pass verification:
-
-1. **pl/ph are 74HC161 counters**: Hardware ptr+ via count-enable. Carry from pl→ph gives free 16-bit increment. Still parallel-loadable for LI pl/ph.
-
-2. **All registers separate**: No sharing (eliminates physical impossibility of 2×8-bit in one 574).
-
-3. **Skip gates interrupt**: `interrupt_enter = pending AND NOT(skip) AND instr_complete`. Max 1 instruction delay.
-
-4. **Branch same-page only**: Offset added to PC[7:0]. PC[15:8] unchanged. Page-crossing uses JMP(ptr).
-
-5. **Constants from operand byte**: No extra mux chip. Constant generator is just the imm8 field.
-
-6. **Reset clears all 74HC74**: /CLR pins wired to reset line.
-
-**Final: 23 CPU chips. Total system (CPU+ROM+RAM+decode+clock): 27 chips.**
-
----
-
-*Next Phase: Verilog Implementation (Phase 4)*
+| Component | Gates |
+|-----------|:-----:|
+| 6× 74HC161 (PC + ptr) | 150 |
+| 6× 74HC574 (IR + regs) | 180 |
+| 2× 74HC283 (ALU adder) | 100 |
+| 1× 74HC86 (XOR) | 30 |
+| 2× 74HC157 (addr mux) | 80 |
+| 1× 74HC138 (decode) | 30 |
+| 1× 74HC245 (bus buf) | 40 |
+| 2× 74HC74 (flags+state) | 50 |
+| 2× 74HC08/32 (logic) | 70 |
+| **Total** | **~730** |
