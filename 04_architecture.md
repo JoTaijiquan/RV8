@@ -577,7 +577,7 @@ This requires: ALU output routable to address mux input. Add one path from ALU r
 
 ---
 
-## 14. Revised Chip Count (post-verification)
+## 14. Revised Chip Count (post-verification, 2nd pass)
 
 | Chip | Part | Function |
 |------|------|----------|
@@ -587,24 +587,40 @@ This requires: ALU output routable to address mux input. Add one path from ALU r
 | U4 | 74HC161 | PC[15:12] |
 | U5 | 74HC574 | IR byte 0 (opcode) — clock gated to S0 only |
 | U6 | 74HC574 | IR byte 1 (operand) — clock gated to S1 only |
-| U7 | 74HC574 | Register: a0 |
-| U8 | 74HC574 | Register: t0, sp (dual 4-bit or time-shared) |
-| U9 | 74HC574 | Register: pl, ph |
-| U10 | 74HC574 | Register: pg + constant generator mux |
-| U11 | 74HC283 | ALU adder low nibble |
-| U12 | 74HC283 | ALU adder high nibble |
-| U13 | 74HC86 | ALU XOR (subtract invert + XOR operation) |
-| U14 | 74HC157 | Address mux low byte (4:1) |
-| U15 | 74HC157 | Address mux high byte (4:1) |
-| U16 | 74HC138 | Unit decode (opcode[7:5]) — enable gated by state |
-| U17 | 74HC245 | Data bus buffer (bidirectional) |
-| U18 | 74HC74 | Flags (Z, C) + state counter (2-bit) |
-| U19 | 74HC74 | Flags (N, IE) + skip FF + NMI edge detect |
-| U20 | 74HC08 | AND gates: IR clock gating, skip gating, control signals |
-| U21 | 74HC32 | OR gates: control signal combining, vector override |
-| **21 chips** | | |
+| U7 | 74HC574 | Register: a0 (accumulator) |
+| U8 | 74HC574 | Register: t0 (temporary) |
+| U9 | 74HC574 | Register: sp (stack pointer, 8-bit) |
+| U10 | 74HC574 | Register: pg (page register) |
+| U11 | 74HC161 | Register: pl (pointer low) — count for ptr+ |
+| U12 | 74HC161 | Register: ph (pointer high) — carry from pl |
+| U13 | 74HC283 | ALU adder low nibble |
+| U14 | 74HC283 | ALU adder high nibble |
+| U15 | 74HC86 | ALU XOR (subtract invert + XOR op) |
+| U16 | 74HC157 | Address mux low byte (4:1) |
+| U17 | 74HC157 | Address mux high byte (4:1) |
+| U18 | 74HC138 | Unit decode (opcode[7:5]) — enable gated by state |
+| U19 | 74HC245 | Data bus buffer (bidirectional) |
+| U20 | 74HC74 | Flags (Z, C) + state counter (2-bit) |
+| U21 | 74HC74 | Flags (N, IE) + skip FF + NMI edge detect |
+| U22 | 74HC08 | AND: IR gating, skip gating, interrupt gating, control |
+| U23 | 74HC32 | OR: signal combining, vector override, carry logic |
+| **23 chips** | | |
 
-**Final: 21 CPU chips** (was 20, +1 for proper state counter separation).
+### Key decisions from 2nd-pass verification:
+
+1. **pl/ph are 74HC161 counters**: Hardware ptr+ via count-enable. Carry from pl→ph gives free 16-bit increment. Still parallel-loadable for LI pl/ph.
+
+2. **All registers separate**: No sharing (eliminates physical impossibility of 2×8-bit in one 574).
+
+3. **Skip gates interrupt**: `interrupt_enter = pending AND NOT(skip) AND instr_complete`. Max 1 instruction delay.
+
+4. **Branch same-page only**: Offset added to PC[7:0]. PC[15:8] unchanged. Page-crossing uses JMP(ptr).
+
+5. **Constants from operand byte**: No extra mux chip. Constant generator is just the imm8 field.
+
+6. **Reset clears all 74HC74**: /CLR pins wired to reset line.
+
+**Final: 23 CPU chips. Total system (CPU+ROM+RAM+decode+clock): 27 chips.**
 
 ---
 
