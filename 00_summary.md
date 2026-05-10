@@ -196,28 +196,29 @@ RV8 is a minimal 8-bit educational CPU inspired by the 6502 but using RISC-V nam
 | Name | RV8 |
 | Data bus | 8-bit |
 | Address bus | 16-bit (64KB) |
-| Instructions | 58 (fixed 2-byte) |
-| Registers | 5 (zero, sp, a0, pl, ph) |
+| Instructions | 68 (fixed 2-byte, direct-encoded) |
+| Registers | 7 (c0/const-gen, sp, a0, pl, ph, t0, pg) |
 | Flags | Z, C, N + IE |
 | ALU | ADD, SUB, ADC, SBC, AND, OR, XOR, CMP, shift, rotate, SWAP |
 | Interrupts | NMI + IRQ |
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
-| Gate count | ~853 |
-| CPU chips | 22 (74HC logic) |
-| Control | Hardwired combinational logic |
+| Gate count | ~873 |
+| CPU chips | 20 (74HC, direct-encoded FSM, fetch/execute overlap) |
+| Control | Hybrid FSM + direct-encoded bits + conditional skip |
+| Performance | ~1.5M instr/sec @ 3.5 MHz (50% faster via overlap) |
 | Power | 5V USB, <1.3W |
 
 ### Base System (simple and clean)
 
 | Component | Spec | Notes |
 |-----------|------|-------|
-| CPU | 22 chips (74HC) | Hardwired control, no EEPROM needed |
+| CPU | 20 chips (74HC) | Direct-encoded FSM, fetch/execute overlap |
 | ROM | 32KB (AT28C256) | **Fixed** — soldered or ZIF socket, always present |
 | RAM | 32KB (62256) | Fixed, always present |
 | Address decode | 1× 74HC138 | ROM / RAM / I/O / slot select |
 | Clock | Crystal + step button | RUN/STEP switch |
 | Debug | 13 LEDs (data bus + state + halt + IRQ) | Always visible |
-| **CPU card total** | **26 chips, ~$48** | **One PCB, works with any peripheral board** |
+| **CPU card total** | **24 chips, ~$45** | **One PCB, works with any peripheral board** |
 
 ### Optional Upgrades (plug-in, not on CPU card)
 
@@ -246,7 +247,7 @@ Peripheral boards (Trainer / PC) add:
 ```
 ┌─────────────────────────────────────────────────────┐
 │  CPU CARD (always the same, simple, clean)          │
-│  26 chips = CPU + fixed ROM + RAM + clock           │
+│  24 chips = CPU + fixed ROM + RAM + clock           │
 └──────────────────────┬──────────────────────────────┘
                        │ 40-pin bus connector
           ┌────────────┼────────────┐
@@ -273,19 +274,19 @@ Peripheral boards (Trainer / PC) add:
 
 ---
 
-## Instruction Set (58 instructions)
+## Instruction Set (64 instructions)
 
 | Group | Instructions |
 |-------|-------------|
 | ALU (8) | ADD, SUB, AND, OR, XOR, CMP, ADC, SBC |
-| Immediate (10) | LI×4, ADDI, SUBI, CMPI, ANDI, ORI, XORI |
-| Load/Store (6) | LB, SB, LB(ptr+), SB(ptr+), MOV rd←a0, MOV a0←rs |
+| Immediate (13) | LI×6, ADDI, SUBI, CMPI, ANDI, ORI, XORI, TST |
+| Load/Store (12) | LB/SB ptr, LB/SB ptr+, MOV×2, LB/SB sp+imm, LB/SB zp+imm, LB/SB pg:imm |
 | Stack (2) | PUSH, POP |
 | Branch (7) | BEQ, BNE, BCS, BCC, BMI, BPL, BRA |
 | Jump (3) | JMP(ptr), JAL(ptr), RET |
 | Shift/Unary (8) | SHL, SHR, ROL, ROR, INC, DEC, NOT, SWAP |
 | Pointer (3) | INC16, DEC16, ADD16 |
-| System (11) | CLC, SEC, CLN, EI, DI, RTI, ECALL, EBREAK, WFI, NOP, HLT |
+| System (8) | CLC, SEC, EI, DI, RTI, TRAP, NOP, HLT |
 
 ---
 
@@ -305,12 +306,12 @@ Peripheral boards (Trainer / PC) add:
 
 | | 6502 | RV8 | Z80 | RISC-V RV32I |
 |--|------|-----|-----|-------------|
-| Gates | ~3,500 | **~853** | ~8,500 | ~15,000 |
-| Registers | 3 | 5 | 14 | 32 |
+| Gates | ~3,500 | **~873** | ~8,500 | ~15,000 |
+| Registers | 3 | 7 | 14 | 32 |
 | Instruction size | 1-3B | **2B fixed** | 1-4B | 4B fixed |
 | Clock (typical) | 1 MHz | **3.5 MHz** | 3.5 MHz | 100+ MHz |
-| Buildable on breadboard | ~40 chips | **~22 chips** | ~60 chips | Not practical |
-| Cost to build | ~$150 | **$64-123** | ~$200+ | N/A |
+| Buildable on breadboard | ~40 chips | **~20 chips** | ~60 chips | Not practical |
+| Cost to build | ~$150 | **$60-120** | ~$200+ | N/A |
 
 ---
 
@@ -342,7 +343,7 @@ Peripheral boards (Trainer / PC) add:
 |-------|----------|--------------------|----- |
 | 1 | ALU kit (2 chips + LEDs + breadboard) | Binary math, logic gates | $5 |
 | 2 | Register + clock kit (3 chips) | Flip-flops, state machines | $8 |
-| 3 | CPU core kit (full 22 chips) | Fetch-decode-execute cycle | $25 |
+| 3 | CPU core kit (full 20 chips) | Fetch-decode-execute cycle | $23 |
 | 4 | Memory kit (ROM + RAM + decode) | Address space, programs | $10 |
 | 5 | Trainer peripheral kit | I/O, display, keyboard, sound | $16 |
 | 6 | PC peripheral kit | Video, full keyboard, gamepads | $75 |

@@ -37,12 +37,19 @@ Byte 1 interpretation depends on instruction type:
 
 | Encoding | Register | Name | Purpose |
 |----------|----------|------|---------|
-| 00 | x1 | sp | Stack pointer (8-bit, page 0x30) |
-| 01 | x2 | a0 | Accumulator (implicit ALU dest) |
-| 10 | x3 | pl | Pointer low byte |
-| 11 | x4 | ph | Pointer high byte |
+| 000 | x0 | c0 | Constant generator: {0, 1, -1, 0x80} selected by instruction bits |
+| 001 | x1 | sp | Stack pointer (8-bit, page 0x30) |
+| 010 | x2 | a0 | Accumulator (implicit ALU dest) |
+| 011 | x3 | pl | Pointer low byte |
+| 100 | x4 | ph | Pointer high byte |
+| 101 | x5 | t0 | Temporary register |
+| 110 | x6 | pg | Page register (addr high byte for page-relative) |
 
-x0 (zero) is not directly encoded — reading register 0x00 in operand byte returns 0 via hardwired logic.
+Constant generator (x0) output depends on bits [3:2] of operand byte:
+- 00 → 0x00, 01 → 0x01, 10 → 0xFF (-1), 11 → 0x80 (sign bit)
+
+When used as `ADD c1`, it adds 1 to a0 (same as INC but through ALU).
+When used as `ADD cn`, it adds -1 (same as DEC). Eliminates need for dedicated INC/DEC in some cases.
 
 ---
 
@@ -73,12 +80,15 @@ Byte 1 = register encoding (bits 1:0).
 | 0x11 | 11 | LI a0, imm | a0 = imm8 | — |
 | 0x12 | 12 | LI pl, imm | pl = imm8 | — |
 | 0x13 | 13 | LI ph, imm | ph = imm8 | — |
-| 0x14 | 14 | ADDI a0, imm | a0 = a0 + imm8 | Z, C, N |
-| 0x15 | 15 | SUBI a0, imm | a0 = a0 - imm8 | Z, C, N |
-| 0x16 | 16 | CMPI a0, imm | flags = a0 - imm8 | Z, C, N |
-| 0x17 | 17 | ANDI a0, imm | a0 = a0 & imm8 | Z, N |
-| 0x18 | 18 | ORI a0, imm | a0 = a0 \| imm8 | Z, N |
-| 0x19 | 19 | XORI a0, imm | a0 = a0 ^ imm8 | Z, N |
+| 0x14 | 14 | LI t0, imm | t0 = imm8 | — |
+| 0x15 | 15 | LI pg, imm | pg = imm8 | — |
+| 0x16 | 16 | ADDI a0, imm | a0 = a0 + imm8 | Z, C, N |
+| 0x17 | 17 | SUBI a0, imm | a0 = a0 - imm8 | Z, C, N |
+| 0x18 | 18 | CMPI a0, imm | flags = a0 - imm8 | Z, C, N |
+| 0x19 | 19 | ANDI a0, imm | a0 = a0 & imm8 | Z, N |
+| 0x1A | 1A | ORI a0, imm | a0 = a0 \| imm8 | Z, N |
+| 0x1B | 1B | XORI a0, imm | a0 = a0 ^ imm8 | Z, N |
+| 0x1C | 1C | TST imm | flags = a0 & imm8 (no store) | Z, N |
 
 Byte 1 = 8-bit immediate value.
 
@@ -92,15 +102,26 @@ Byte 1 = 8-bit immediate value.
 | 0x23 | 23 | SB rs, (ptr+) | mem[{ph,pl}] = rs; ptr++ | — |
 | 0x24 | 24 | MOV rd, a0 | rd = a0 | — |
 | 0x25 | 25 | MOV a0, rs | a0 = rs | — |
+| 0x26 | 26 | LB a0, [sp+imm] | a0 = mem[{0x30, sp+imm8}] | — |
+| 0x27 | 27 | SB a0, [sp+imm] | mem[{0x30, sp+imm8}] = a0 | — |
+| 0x28 | 28 | LB a0, [zp+imm] | a0 = mem[{0x00, imm8}] | — |
+| 0x29 | 29 | SB a0, [zp+imm] | mem[{0x00, imm8}] = a0 | — |
+| 0x2A | 2A | LB a0, [pg:imm] | a0 = mem[{pg, imm8}] | — |
+| 0x2B | 2B | SB a0, [pg:imm] | mem[{pg, imm8}] = a0 | — |
 
-Byte 1 = register encoding (bits 1:0).
+Byte 1 = register encoding (bits 1:0) for 0x20-0x25.  
+Byte 1 = unsigned 8-bit offset for 0x26-0x2B.
+
+**Stack-relative** (0x26-0x27): Address = {0x30, SP + offset}. Fast local variable access.  
+**Zero-page** (0x28-0x29): Address = {0x00, offset}. Fast global variable access (256 bytes).  
+**Page-relative** (0x2A-0x2B): Address = {pg, offset}. Access any 256-byte page set by `LI pg, imm`. Equivalent to 6502 absolute addressing in 2 bytes.
 
 ### 4.4 Stack
 
 | Opcode | Hex | Mnemonic | Operation | Flags |
 |--------|-----|----------|-----------|-------|
-| 0x28 | 28 | PUSH rs | sp--; mem[{0x30,sp}] = rs | — |
-| 0x29 | 29 | POP rd | rd = mem[{0x30,sp}]; sp++ | — |
+| 0x2C | 2C | PUSH rs | sp--; mem[{0x30,sp}] = rs | — |
+| 0x2D | 2D | POP rd | rd = mem[{0x30,sp}]; sp++ | — |
 
 Byte 1 = register encoding (bits 1:0).
 
@@ -115,17 +136,24 @@ Byte 1 = register encoding (bits 1:0).
 | 0x34 | 34 | BMI offset | N == 1 (negative) |
 | 0x35 | 35 | BPL offset | N == 0 (positive) |
 | 0x36 | 36 | BRA offset | Always (unconditional) |
+| 0x37 | 37 | SKIPZ | If Z==1: next instruction executes as NOP |
+| 0x38 | 38 | SKIPNZ | If Z==0: next instruction executes as NOP |
+| 0x39 | 39 | SKIPC | If C==1: next instruction executes as NOP |
+| 0x3A | 3A | SKIPNC | If C==0: next instruction executes as NOP |
 
-Byte 1 = signed 8-bit offset added to PC.  
-Branch target = PC + sign_extend(offset). PC already advanced by 2 after fetch.
+Byte 1 = signed 8-bit offset for branches (0x30-0x36).  
+Byte 1 = 0x00 (unused) for skip instructions (0x37-0x3A).
+
+Branch target = PC + sign_extend(offset). PC already advanced after fetch.  
+Skip: no branch penalty — next instruction is fetched but write-enables are suppressed.
 
 ### 4.6 Jump
 
 | Opcode | Hex | Mnemonic | Operation |
 |--------|-----|----------|-----------|
-| 0x38 | 38 | JMP (ptr) | PC = {ph, pl} |
-| 0x39 | 39 | JAL (ptr) | push PCH; push PCL; PC = {ph,pl} |
-| 0x3A | 3A | RET | pop PCL; pop PCH |
+| 0x3C | 3C | JMP (ptr) | PC = {ph, pl} |
+| 0x3D | 3D | JAL (ptr) | push PCH; push PCL; PC = {ph,pl} |
+| 0x3E | 3E | RET | pop PCL; pop PCH |
 
 Byte 1 = 0x00 (unused).
 
@@ -160,21 +188,23 @@ Byte 1: 0x00 for INC16/DEC16, immediate for ADD16.
 |--------|-----|----------|-----------|
 | 0xF0 | F0 | CLC | C = 0 |
 | 0xF1 | F1 | SEC | C = 1 |
-| 0xF2 | F2 | CLN | N = 0 |
-| 0xF3 | F3 | EI | Enable interrupts (IE = 1) |
-| 0xF4 | F4 | DI | Disable interrupts (IE = 0) |
-| 0xF5 | F5 | RTI | Pop Flags, pop PCL, pop PCH (return from interrupt) |
-| 0xF6 | F6 | ECALL | System call: push PC, jump to vector 0xFFF6 |
-| 0xF7 | F7 | EBREAK | Breakpoint: halt + set debug flag |
-| 0xF8 | F8 | WFI | Sleep until interrupt (stop clock, wake on NMI/IRQ) |
-| 0xFE | FE | NOP | No operation |
-| 0xFF | FF | HLT | Halt clock (permanent, needs RESET) |
+| 0xF2 | F2 | EI | Enable interrupts (IE = 1) |
+| 0xF3 | F3 | DI | Disable interrupts (IE = 0) |
+| 0xF4 | F4 | RTI | Pop Flags, pop PCL, pop PCH (return from interrupt) |
+| 0xF5 | F5 | TRAP imm | System call: push PC, jump to vector 0xFFF6. Byte 1 = trap number (in a0 on entry) |
+| 0xFE | FE | NOP | No operation (alias: ADD x0, no side effects) |
+| 0xFF | FF | HLT | Halt clock (wakes on NMI or IRQ if IE=1, else permanent) |
 
-Byte 1 = 0x00 (unused).
+Byte 1 = 0x00 (unused) except TRAP (byte 1 = trap number passed to handler).
 
-**WFI vs HLT**:
-- HLT: permanent stop, only RESET button resumes
-- WFI: temporary sleep, auto-wakes on any interrupt, continues from next instruction
+**HLT behavior**:
+- If IE=0: permanent halt (needs RESET)
+- If IE=1: sleeps until interrupt, then resumes (replaces WFI)
+
+**TRAP** replaces both ECALL and EBREAK:
+- TRAP 0 = system call (ECALL equivalent)
+- TRAP 1 = breakpoint (EBREAK equivalent)
+- TRAP 2-255 = user-defined traps
 
 ---
 
@@ -182,12 +212,13 @@ Byte 1 = 0x00 (unused).
 
 | Bit | Name | Set by |
 |-----|------|--------|
-| 0 | Z (Zero) | ALU ops, CMP, INC, DEC, shift, logic |
+| 0 | Z (Zero) | ALU ops, CMP, INC, DEC, shift, logic, TST |
 | 1 | C (Carry) | ADD, SUB, ADC, SBC, CMP, SHL, SHR, ROL, ROR |
 | 2 | N (Negative) | Result bit 7 (sign bit) |
-| 3 | IE (Interrupt Enable) | EI, DI, RTI (not saved in flags push — separate) |
+| 3 | IE (Interrupt Enable) | EI, DI, RTI |
 
-Note: IE is stored separately but grouped here for reference. On interrupt entry, IE is cleared. RTI restores previous IE state from stack.
+Note: N flag is set automatically by ALU results. No manual clear needed (any ALU op resets it).  
+IE is stored separately. On interrupt entry, IE is cleared. RTI restores previous IE state from stack.
 
 ---
 
@@ -195,19 +226,33 @@ Note: IE is stored separately but grouped here for reference. On interrupt entry
 
 | Count | Category |
 |-------|----------|
-| 8 | ALU register |
-| 10 | Immediate |
-| 6 | Load/Store/MOV |
-| 2 | Stack |
-| 7 | Branch |
-| 3 | Jump |
-| 8 | Shift/Unary (incl. SWAP) |
-| 3 | Pointer arithmetic |
-| 11 | System (CLC, SEC, CLN, EI, DI, RTI, ECALL, EBREAK, WFI, NOP, HLT) |
-| **58** | **Total instructions** |
+| 8 | ALU register (ADD, SUB, AND, OR, XOR, CMP, ADC, SBC) |
+| 13 | Immediate (LI×6, ADDI, SUBI, CMPI, ANDI, ORI, XORI, TST) |
+| 12 | Load/Store (LB/SB ptr, LB/SB ptr+, MOV×2, LB/SB sp+imm, LB/SB zp+imm, LB/SB pg:imm) |
+| 2 | Stack (PUSH, POP) |
+| 7 | Branch (BEQ, BNE, BCS, BCC, BMI, BPL, BRA) |
+| 4 | Conditional skip (SKIPZ, SKIPNZ, SKIPC, SKIPNC) |
+| 3 | Jump (JMP, JAL, RET) |
+| 8 | Shift/Unary (SHL, SHR, ROL, ROR, INC, DEC, NOT, SWAP) |
+| 3 | Pointer (INC16, DEC16, ADD16) |
+| 8 | System (CLC, SEC, EI, DI, RTI, TRAP, NOP, HLT) |
+| **68** | **Total instructions** |
 
-All instructions are 2 bytes. 198 opcode slots remain free for future expansion.  
+All instructions are 2 bytes. 188 opcode slots remain free for future expansion.  
 Undefined opcodes default to HLT (safe error behavior).
+
+### Direct-Encoded Instruction Format
+
+```
+Byte 0: [unit(3)][op(3)][reg(2)]  — bits wire directly to hardware
+         │         │       └── Register mux select (direct wire)
+         │         └────────── ALU/shift operation (direct wire to ALU)
+         └──────────────────── Functional unit enable (via 74HC138)
+
+Byte 1: [immediate/offset/register/constant-select]
+```
+
+Minimal decode: 1× 74HC138 decodes unit select. Op bits and reg bits connect directly to hardware. No intermediate decode logic needed.
 
 ---
 

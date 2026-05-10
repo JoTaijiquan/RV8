@@ -31,7 +31,7 @@
 | Instruction width | Fixed 2 bytes | Uniform fetch, no length decoder |
 | Data width | 8 bits | Matches data bus |
 | Address bus | 16 bits | 64KB address space |
-| Register count | 5 (x0-x4) | 3-bit encoding (5 used, 3 reserved) |
+| Register count | 7 (x0-x6) | 3-bit encoding (7 used, 1 reserved) |
 | x0 | Always zero | RISC-V convention |
 | Clock | 3.5 MHz breadboard / 10 MHz PCB | 74HC both targets |
 | Pipeline | None (multi-cycle) | Minimal gates |
@@ -49,12 +49,22 @@
 
 | Encoding | Register | Name | Purpose |
 |----------|----------|------|---------|
-| 000 | x0 | zero | Hardwired to 0 |
+| 000 | x0 | c0 | Constant generator: 0 (default), 1, -1 (0xFF), 0x80 — selected by instruction context |
 | 001 | x1 | sp | Stack pointer (8-bit, page 0x30) |
 | 010 | x2 | a0 | Accumulator (implicit ALU destination) |
 | 011 | x3 | pl | Pointer low byte |
 | 100 | x4 | ph | Pointer high byte |
-| 101-111 | — | — | Reserved (read as zero) |
+| 101 | x5 | t0 | Temporary register |
+| 110 | x6 | pg | Page register (high byte for page-relative addressing) |
+| 111 | — | — | Reserved (read as zero) |
+
+**Constant generator (x0):** When read as source operand, produces:
+- `c0` = 0x00 (default, same as old zero register)
+- `c1` = 0x01 (via encoding variant)
+- `cn` = 0xFF (-1, via encoding variant)
+- `ch` = 0x80 (sign bit, via encoding variant)
+
+Eliminates ~20% of LI instructions for common constants. Hardware: 1× 74HC157 (quad 2:1 mux).
 
 ### Special Registers (not in register file)
 
@@ -71,7 +81,8 @@
 
 | Address Range | Size | Purpose |
 |---------------|------|---------|
-| 0x0000–0x257F | 9600B | Video bitmap (320×240, 1bpp) |
+| 0x0000–0x00FF | 256B | **Zero page** (fast globals via `LB/SB [zp+imm]`) |
+| 0x0100–0x257F | 9344B | Video bitmap (320×240, 1bpp, starts at 0x0100) |
 | 0x2580–0x2977 | 1000B | Video attributes (40×25 color cells, 16 colors) |
 | 0x2978–0x2D6F | 1000B | Text buffer (40×25 characters) |
 | 0x2D70–0x2FFF | 656B | System variables |
@@ -80,8 +91,8 @@
 | 0x4000–0x7FFF | 16KB | **Universal bus slot** (ROM cart / RAM / I/O / empty=0xFF) |
 | 0x8000–0x80FF | 256B | I/O devices (memory-mapped) |
 | 0xC000–0xFFFF | 16KB | **Fixed ROM** (BASIC + monitor + drivers, always present) |
-| 0xFFF6–0xFFF7 | 2B | ECALL vector (system call) |
-| 0xFFF8–0xFFF9 | 2B | EBREAK vector (breakpoint) |
+| 0xFFF6–0xFFF7 | 2B | TRAP vector (system call / breakpoint) |
+| 0xFFF8–0xFFF9 | 2B | (reserved) |
 | 0xFFFA–0xFFFB | 2B | NMI vector |
 | 0xFFFC–0xFFFD | 2B | RESET vector |
 | 0xFFFE–0xFFFF | 2B | IRQ vector |
@@ -140,12 +151,16 @@ Card detect: mechanical switch → readable at I/O register 0x80C2 bit 0.
 | 0x8040 | Joypad 1 | R | NES pad: [A][B][Sel][Sta][U][D][L][R] |
 | 0x8041 | Joypad 2 | R | NES pad: [A][B][Sel][Sta][U][D][L][R] |
 | 0x8042 | Joypad strobe | W | Write 1 then 0 to latch pad state |
-| 0x8050 | Joystick 1 X | R | Analog X axis (0-255) |
-| 0x8051 | Joystick 1 Y | R | Analog Y axis (0-255) |
-| 0x8052 | Joystick 1 btn | R | Buttons (bits 0-3) |
-| 0x8053 | Joystick 2 X | R | Analog X axis (0-255) |
-| 0x8054 | Joystick 2 Y | R | Analog Y axis (0-255) |
-| 0x8055 | Joystick 2 btn | R | Buttons (bits 0-3) |
+| 0x8043 | Joypad 1 out | W | 4-bit digital output (bits 0-3, for LEDs/rumble) |
+| 0x8044 | Joypad 2 out | W | 4-bit digital output (bits 0-3, for LEDs/rumble) |
+| 0x8050 | Joystick 1 X | R | Analog X axis (0-255, 128=center) |
+| 0x8051 | Joystick 1 Y | R | Analog Y axis (0-255, 128=center) |
+| 0x8052 | Joystick 1 btn | R | [A][B][Sel][Sta][0][0][0][0] |
+| 0x8053 | Joystick 1 out | W | 4-bit digital output (bits 0-3) |
+| 0x8054 | Joystick 2 X | R | Analog X axis (0-255, 128=center) |
+| 0x8055 | Joystick 2 Y | R | Analog Y axis (0-255, 128=center) |
+| 0x8056 | Joystick 2 btn | R | [A][B][Sel][Sta][0][0][0][0] |
+| 0x8057 | Joystick 2 out | W | 4-bit digital output (bits 0-3) |
 | 0x8060 | GPIO out | W | 8 digital outputs |
 | 0x8061 | GPIO in | R | 8 digital inputs |
 | 0x8070 | ADC channel | W | Select analog input (0-7) |
@@ -192,18 +207,37 @@ When PS/2 keyboard connected, it overrides the built-in matrix (detected via key
 
 ## 6. Execution Model
 
-- **Fixed 2-byte fetch**: Every instruction is 2 bytes, fetched in 2 cycles
-- **Multi-cycle execution**: 3-4 cycles per instruction
-  - T0: Fetch byte 0 (opcode), PC++
-  - T1: Fetch byte 1 (operand), PC++
-  - T2: Execute (ALU / address calc)
-  - T3: Memory access or write-back (if needed)
+- **Fixed 2-byte fetch**: Every instruction is 2 bytes
+- **Fetch/Execute overlap** (6502-style): During execute of instruction N, byte 0 of instruction N+1 is prefetched. Most instructions complete in **2 cycles** (not 3).
+  - T0: Fetch byte 1 (operand) + execute previous instruction (overlapped)
+  - T1: Fetch byte 0 (opcode) of next instruction + writeback
+  - Memory-access instructions: +1 cycle (T2 for mem read/write)
 - **Accumulator model**: ALU destination is always a0
 - **Pointer register pair**: {ph, pl} forms 16-bit address for indirect access
 - **Auto-increment**: ptr+ instructions increment {ph,pl} after access
+- **Conditional skip**: SKIPZ/SKIPNZ/SKIPC/SKIPNC cause next instruction to execute as NOP if condition fails (eliminates short branches)
+- **Constant generator**: x0 produces 0, 1, -1, or 0x80 depending on instruction encoding
+- **Direct-encoded control**: Instruction bit fields wire directly to hardware control signals (minimal decode logic)
 - **Interrupts**: 2 lines (NMI + IRQ), checked between instructions
 - **Undefined opcodes**: Default to HLT (safe stop)
 - **Stack overflow protection**: SP wraps (0x00→0xFF) and sets C flag; NMI triggered on overflow
+
+### Cycle Timing (with overlap)
+
+| Instruction type | Cycles | Notes |
+|-----------------|--------|-------|
+| ALU / immediate / shift / MOV | **2** | Execute overlaps with next fetch |
+| Load/Store (ptr, zp, pg, sp+off) | **3** | +1 for memory access |
+| Branch (taken) | **3** | +1 to load new PC |
+| Branch (not taken) | **2** | No penalty |
+| JMP (ptr) | **2** | Load PC from ptr |
+| JAL (ptr) | **4** | Push PC + load new PC |
+| RET | **4** | Pop PC |
+| PUSH/POP | **3** | Memory access |
+| Conditional skip (condition true) | **2** | Next instruction becomes NOP |
+| Conditional skip (condition false) | **2** | No effect, continue normally |
+
+Average: **~2.3 cycles/instruction** → **~1.5M instructions/sec at 3.5 MHz**
 
 ### Interrupt Behavior
 
@@ -246,66 +280,128 @@ Interrupt sequence (7 cycles):
 
 | Module | Gates |
 |--------|-------|
-| Register file (4×8 bits, x0 hardwired) | ~130 |
+| Register file (6×8 bits + constant gen mux) | ~220 |
 | ALU (8-bit, add/sub/and/or/xor/shift/swap) | ~128 |
 | PC (16-bit register + incrementer) | ~70 |
 | Instruction register (16-bit) | ~60 |
+| Prefetch latch (8-bit, fetch/execute overlap) | ~30 |
 | Pointer incrementer (16-bit, for ptr+) | ~20 |
-| Flags (Z, C, N) + IE flag | ~30 |
+| Flags (Z, C, N) + IE + conditional skip logic | ~35 |
 | Interrupt logic (NMI edge detect + IRQ mask) | ~60 |
 | Stack overflow detect (SP wrap → NMI) | ~10 |
-| Control/Decode (hardwired, 74HC logic) | ~210 |
-| Address mux (PC vs ptr vs stack vs vector) | ~90 |
+| Stack-relative adder (sp + offset) | ~25 |
+| Zero-page / page-relative address mux | ~15 |
+| Control: Direct-encoded FSM (minimal decode) | ~80 |
+| Address mux (PC vs ptr vs stack vs zp vs page vs vector) | ~80 |
 | Bus buffers/misc | ~40 |
-| **Total** | **~848 gates** |
+| **Total** | **~873 gates** |
+
+### Design tricks applied:
+1. **Direct-encoded instructions** — opcode bits wire to hardware controls, eliminates decode chips
+2. **Fetch/execute overlap** — prefetch next opcode during execute (+50% throughput)
+3. **Constant generator** — x0 produces {0, 1, -1, 0x80}, eliminates ~20% of LI instructions
+4. **Conditional skip** — 1 AND gate on write-enable, eliminates short branches
 
 ---
 
 ## 8. Build Options
 
-### Option 1: Single-Board Trainer
+### Option 1A: Trainer — Hex Entry (Minimal)
 
-A self-contained learning board (like KIM-1 or Heathkit ET-3400).
+Bare-bones machine code trainer (like KIM-1).
 
 ```
 ┌─────────────────────────────────────────────┐
-│  RV8 TRAINER                                │
+│  RV8 TRAINER (HEX)                          │
 │                                             │
-│  [4-digit 7-segment display]  [8 LEDs]      │
-│                                             │
-│  [16×2 LCD display]                         │
+│  [4-digit 7-segment]  [8 data LEDs]         │
+│   addr/data display    bus activity          │
 │                                             │
 │  ┌───┬───┬───┬───┐                         │
-│  │ 0 │ 1 │ 2 │ 3 │  Hex keypad             │
-│  ├───┼───┼───┼───┤  + control keys          │
-│  │ 4 │ 5 │ 6 │ 7 │  (STEP, RUN, RESET,     │
-│  ├───┼───┼───┼───┤   ADDR, DATA, GO)        │
+│  │ 0 │ 1 │ 2 │ 3 │                         │
+│  ├───┼───┼───┼───┤  16 hex keys             │
+│  │ 4 │ 5 │ 6 │ 7 │                         │
+│  ├───┼───┼───┼───┤                         │
 │  │ 8 │ 9 │ A │ B │                         │
 │  ├───┼───┼───┼───┤                         │
 │  │ C │ D │ E │ F │                         │
 │  └───┴───┴───┴───┘                         │
 │                                             │
-│  [STEP] [RUN] [RESET] [ADDR] [DATA] [GO]   │
+│  [RUN][BRK][RST][STEP][ADDR][DATA][+][-]    │
 │                                             │
-│  Serial port (USB)  Speaker  GPIO header    │
+│  (USB) (Speaker) (SD) [30-pin SLOT]         │
 └─────────────────────────────────────────────┘
 ```
 
 | Feature | Spec |
 |---------|------|
-| Display | 4-digit 7-segment (address/data) + 16×2 LCD |
-| Input | 16-key hex keypad + 6 control buttons |
-| Audio | Piezo speaker (1-bit) or small DAC |
-| Debug | Single-step, address/data display, 8 LEDs on data bus |
-| Serial | USB-UART for PC connection |
-| Expansion | GPIO header (8 in + 8 out) |
-| ROM | 2KB (monitor only, no BASIC) |
-| RAM | 2KB (enough for hand-entered programs) |
-| Video output | None (LCD only) |
-| Power | USB powered (5V) |
-| PCB size | ~100mm × 150mm |
-| Cost | ~$55 |
-| Purpose | Learn CPU internals, hand-enter machine code, single-step |
+| Display | 4-digit 7-segment (address/data) + 8 LEDs |
+| Input | 16 hex keys + 8 control buttons |
+| Mode | HEX only (machine code entry) |
+| Audio | 8-bit DAC + speaker + audio in |
+| Storage | SD card + serial + cassette |
+| Debug | Step, trace, breakpoint, register dump (via serial) |
+| Slot | Universal bus slot (30-pin) |
+| ROM | 32KB (shared ROM, auto-detects board) |
+| PCB size | ~80mm × 100mm |
+| Chips (peripheral) | ~6 |
+| Cost (board only) | ~$12 |
+
+### Option 1B: Trainer — Mini Keyboard (ASM + BASIC)
+
+Full-featured trainer with rubber keyboard and LCD (like a programmable calculator).
+
+```
+┌─────────────────────────────────────────────────┐
+│  RV8 TRAINER (ASM/BASIC)                        │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │  20×4 LCD display                       │    │
+│  │  Line 1: status / address               │    │
+│  │  Line 2: instruction / code             │    │
+│  │  Line 3: output                         │    │
+│  │  Line 4: input prompt                   │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │ Q W E R T Y U I O P  [DEL] [ENT]       │    │
+│  │ A S D F G H J K L    [SHF] [MOD]       │    │
+│  │ Z X C V B N M , .    [SPC] [BRK]       │    │
+│  │ 0 1 2 3 4 5 6 7 8 9  [RUN] [STP]       │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  [8 data LEDs]                                  │
+│  (USB) (Speaker) (SD) [30-pin SLOT]             │
+└─────────────────────────────────────────────────┘
+```
+
+| Feature | Spec |
+|---------|------|
+| Display | 20×4 LCD (HD44780) + 8 LEDs |
+| Input | Mini QWERTY rubber matrix (40+ keys) + control keys |
+| Modes | HEX, ASM, BASIC (MODE key switches) |
+| Audio | 8-bit DAC + speaker + audio in |
+| Storage | SD card + serial + cassette |
+| Debug | Step, trace, breakpoint, register display on LCD |
+| Slot | Universal bus slot (30-pin) |
+| ROM | 32KB (shared ROM, auto-detects board) |
+| PCB size | ~120mm × 150mm |
+| Chips (peripheral) | ~8 |
+| Cost (board only) | ~$20 |
+
+### Trainer comparison
+
+| | 1A (Hex) | 1B (Mini KB) |
+|--|----------|-------------|
+| Display | 7-segment (4 digits) | 20×4 LCD |
+| Input | Hex keypad (16+8 keys) | Mini QWERTY (40+ keys) |
+| Modes | HEX only | HEX + ASM + BASIC |
+| Can type BASIC? | No (serial only) | ✅ Yes (on-board) |
+| Can type assembly? | No (hex bytes only) | ✅ Yes (mnemonics) |
+| Size | Small (80×100mm) | Medium (120×150mm) |
+| Cost (board) | $12 | $20 |
+| Total (CPU+board) | **$60** | **$68** |
+| Best for | Learning fetch-execute, machine code | Full standalone programming |
 
 ### Option 2: PC-Style Full Computer
 
@@ -350,12 +446,14 @@ A complete home computer (like ZX Spectrum / Apple II).
 
 | Component | Option 1 | Option 2 |
 |-----------|----------|----------|
-| CPU chips | 22 | 22 |
+| CPU chips | 20 | 20 |
 | Clock | 3.5 MHz + step | 3.5 MHz + step (or 10 MHz PCB) |
-| ROM | AT28C16 (2KB) | AT28C128 (16KB) |
-| RAM | 62256 (2KB used) | 62256 (32KB used) |
-| Address decode | 1× 74HC138 | 2× 74HC138 |
-| **CPU subtotal** | **~25 chips** | **~25 chips** |
+| ROM | AT28C256 (32KB) | AT28C256 (32KB) — **same ROM image** |
+| RAM | 62256 (32KB) | 62256 (32KB) |
+| Address decode | 1× 74HC138 | 1× 74HC138 |
+| **CPU subtotal** | **~24 chips** | **~24 chips** |
+
+The ROM auto-detects which peripheral board is connected and adjusts I/O accordingly.
 
 ### Peripheral differences
 
@@ -392,15 +490,27 @@ A complete home computer (like ZX Spectrum / Apple II).
 
 ## 10. ROM Contents
 
-### Option 1: Trainer ROM (2KB)
+### Option 1: Trainer ROM (32KB — same ROM as PC, full featured)
 
 | Offset | Size | Content |
 |--------|------|---------|
-| 0x0000 | 1KB | Monitor (hex edit, step, run, dump, serial upload/download) |
-| 0x0400 | 512B | Mini assembler (mnemonics + comments, no macros) |
-| 0x0600 | 256B | Disassembler |
-| 0x0700 | 250B | Example programs + utility routines |
-| 0x07FA | 6B | Vectors (NMI, RESET, IRQ) |
+| 0x0000 | 1.5KB | Monitor (hex mode: edit, step, run, dump, trace, breakpoint) |
+| 0x0600 | 512B | Assembly mode (guided entry, disassemble) |
+| 0x0800 | 512B | Boot + hardware init + drivers |
+| 0x0A00 | 3KB | Floating point library |
+| 0x1600 | 2KB | Math functions (SIN, COS, SQR, LOG, EXP) |
+| 0x1E00 | 1KB | String handling |
+| 0x2200 | 1.5KB | Tokenizer + line editor |
+| 0x2800 | 1.5KB | Expression parser |
+| 0x2E00 | 2KB | Statement executor |
+| 0x3600 | 2KB | Assembler (mnemonics + labels + comments + macros) |
+| 0x3E00 | 1KB | Disassembler |
+| 0x4200 | 256B | Storage driver (serial + cassette + SD) |
+| 0x4300 | 256B | Mode switcher + LCD/7-seg driver |
+| 0x4400 | ~27KB | Free (same ROM works for both trainer and PC) |
+| 0x7FFA | 6B | Vectors (NMI, RESET, IRQ) |
+
+Note: Trainer and PC use the **same 32KB ROM**. The ROM detects which board it's on (via I/O register) and adjusts output (LCD vs video, keypad vs keyboard).
 
 ### Option 2: Full Computer ROM (16KB)
 
@@ -424,7 +534,7 @@ A complete home computer (like ZX Spectrum / Apple II).
 
 | Feature | Supported | ROM cost |
 |---------|-----------|----------|
-| All 58 mnemonics | ✅ | ~220B (table) |
+| All 60 mnemonics | ✅ | ~230B (table) |
 | Register names (A0, SP, PL, PH) | ✅ | ~50B |
 | Hex literals ($FF) and decimal (255) | ✅ | ~100B |
 | Labels (forward + backward) | ✅ | ~300B + RAM symbol table |
@@ -645,7 +755,7 @@ Expansion card examples:
 
 ## 14. Success Criteria
 
-- [ ] All 58 instructions execute correctly in simulation
+- [ ] All 64 instructions execute correctly in simulation
 - [ ] Total gate count < 900 (excluding memory)
 - [ ] Option 1: Monitor + mini assembler works (hex edit, assemble, step, run)
 - [ ] Option 2: Full BASIC interpreter runs with floating point
