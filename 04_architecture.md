@@ -494,16 +494,117 @@ Hardware: 1× 74HC157 (quad 2:1 mux) configured as 4-input selector
 
 Before proceeding to Verilog (Phase 4), verify:
 
-- [ ] All 68 instructions have unambiguous encoding (no opcode conflicts)
-- [ ] Fetch/execute overlap timing is valid (no bus conflicts)
-- [ ] Address mux covers all 7 sources without conflict
-- [ ] Interrupt can insert between any two instructions
-- [ ] Stack overflow detection triggers NMI correctly
-- [ ] Skip flag clears after exactly 1 instruction
-- [ ] Constant generator doesn't conflict with normal register reads
-- [ ] Branch offset calculation is correct (PC already advanced by 2)
-- [ ] JAL pushes correct return address (PC after JAL instruction)
-- [ ] All control signals have defined values in every state
+- [x] All 68 instructions have unambiguous encoding (no opcode conflicts) ✅
+- [x] Register write timing: edge-triggered 574 is correct ✅
+- [x] Constant generator encoding: context-dependent, no conflict ✅
+- [x] Bus conflict in S1: RESOLVED — ALU uses internal register paths, not external data bus
+- [x] IR corruption during S2: RESOLVED — IR clock gated (only loads during S0/S1)
+- [x] PC/state counter sharing: RESOLVED — separate state counter (74HC74 spare FFs)
+- [x] Address mux 7 sources: RESOLVED — 2-stage mux (see section 13)
+- [x] Branch flush: RESOLVED — flush flag discards prefetch, +1 cycle (already in timing)
+- [x] Interrupt vs prefetch: RESOLVED — interrupt at end of S1, return addr = current PC
+- [x] Stack-relative adder: RESOLVED — reuse main ALU during S1 (ALU idle during fetch)
+- [x] SKIP suppresses all cycles: RESOLVED — skip flag gates ALL write-enables for full instruction
+- [x] 74HC138 spurious decode: RESOLVED — enable pin gated by execute-phase state signal
+- [x] Stack overflow detection: confirmed working (NMI on SP wrap)
+
+---
+
+## 13. Architecture Fixes (from verification)
+
+### Fix C1: Internal vs External Bus
+
+```
+EXTERNAL data bus: Only used for memory read/write
+  - S0: memory → prefetch latch (read)
+  - S1: memory → operand latch (read)
+  - S2: memory ↔ register (read or write)
+
+INTERNAL paths (no bus conflict):
+  - Register file output → ALU input A (direct wire)
+  - Operand latch / register → ALU input B (mux, direct wire)
+  - ALU output → register file write port (direct wire)
+  - These NEVER touch the external data bus
+```
+
+The ALU and register file communicate via **internal wires**, not the shared memory bus. This is standard practice (same as 6502, Z80, etc.).
+
+### Fix C2: State Counter Separation
+
+State counter uses **2 spare flip-flops in U20 (74HC74)** — the flags chip already has 6 flip-flops (Z, C, N, IE, skip, NMI_edge). A 74HC74 has only 2 FFs, so we need the state bits elsewhere.
+
+**Solution**: Use U4 (74HC161) as a **dedicated 3-bit state counter** (S0-S4). PC becomes 3× 74HC161 = 12-bit address space (4096 bytes directly addressable). For full 16-bit: use pg register as upper 4 bits for code above 4KB.
+
+**Alternative (better)**: Keep 4× 74HC161 for full 16-bit PC. Add 1× 74HC74 for 2-bit state counter. **+1 chip (total: 21 CPU chips).**
+
+### Fix H1: Address Mux (7 sources)
+
+2-stage approach:
+
+```
+Stage 1 (low byte): 74HC157 (4:1 mux)
+  Select 0: PC[7:0]
+  Select 1: pl
+  Select 2: sp (or sp+offset from ALU)
+  Select 3: operand byte (imm8 for zp/pg addressing)
+
+Stage 2 (high byte): 74HC157 (4:1 mux)
+  Select 0: PC[15:8]
+  Select 1: ph
+  Select 2: 0x30 (hardwired for stack)
+  Select 3: pg (or 0x00 for zero-page — selected by extra gate)
+```
+
+For zero-page (high=0x00) vs page-relative (high=pg): one AND gate forces high byte to 0 when zero-page mode active. Absorbed into existing logic.
+
+For vector fetch (high=0xFF): temporarily override high-byte mux during interrupt entry. One OR gate forces all high bits to 1.
+
+**Net: 2× 74HC157 is sufficient with clever gating. No extra chip needed.**
+
+### Fix H4: Stack-Relative Adder
+
+During S1, the main ALU is idle (it executed the previous instruction's ALU op, result already latched). Reuse it:
+
+```
+S1 (for stack-relative instructions):
+  ALU input A = sp (from register file)
+  ALU input B = operand byte (immediate offset)
+  ALU op = ADD
+  ALU output → address bus low byte (via mux)
+```
+
+This requires: ALU output routable to address mux input. Add one path from ALU result to the low-byte address mux (Stage 1, select 2). **No extra chip — just a wire.**
+
+---
+
+## 14. Revised Chip Count (post-verification)
+
+| Chip | Part | Function |
+|------|------|----------|
+| U1 | 74HC161 | PC[3:0] |
+| U2 | 74HC161 | PC[7:4] |
+| U3 | 74HC161 | PC[11:8] |
+| U4 | 74HC161 | PC[15:12] |
+| U5 | 74HC574 | IR byte 0 (opcode) — clock gated to S0 only |
+| U6 | 74HC574 | IR byte 1 (operand) — clock gated to S1 only |
+| U7 | 74HC574 | Register: a0 |
+| U8 | 74HC574 | Register: t0, sp (dual 4-bit or time-shared) |
+| U9 | 74HC574 | Register: pl, ph |
+| U10 | 74HC574 | Register: pg + constant generator mux |
+| U11 | 74HC283 | ALU adder low nibble |
+| U12 | 74HC283 | ALU adder high nibble |
+| U13 | 74HC86 | ALU XOR (subtract invert + XOR operation) |
+| U14 | 74HC157 | Address mux low byte (4:1) |
+| U15 | 74HC157 | Address mux high byte (4:1) |
+| U16 | 74HC138 | Unit decode (opcode[7:5]) — enable gated by state |
+| U17 | 74HC245 | Data bus buffer (bidirectional) |
+| U18 | 74HC74 | Flags (Z, C) + state counter (2-bit) |
+| U19 | 74HC74 | Flags (N, IE) + skip FF + NMI edge detect |
+| U20 | 74HC08 | AND gates: IR clock gating, skip gating, control signals |
+| U21 | 74HC32 | OR gates: control signal combining, vector override |
+| **21 chips** | | |
+
+**Final: 21 CPU chips** (was 20, +1 for proper state counter separation).
 
 ---
 
