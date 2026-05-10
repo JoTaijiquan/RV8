@@ -1,7 +1,7 @@
-# RV8 — Instruction Set Reference (matches working Verilog)
+# RV8 — Instruction Set Reference
 
-**Status**: Verified — all tests pass  
-**Source of truth**: `rv8_cpu.v`
+**Source of truth**: `rtl/rv8_cpu.v`  
+**Verified**: 69 test assertions pass (all instructions covered)
 
 ---
 
@@ -9,21 +9,31 @@
 
 | Code | Name | Purpose |
 |:----:|------|---------|
-| 0 | c0 | Constant: 0x00/0x01/0xFF/0x80 (selected by operand[3:2]) |
+| 0 | c0 | Constant generator: bits[4:3] select {0x00, 0x01, 0xFF, 0x80} |
 | 1 | sp | Stack pointer (8-bit, stack at page 0x30) |
 | 2 | a0 | Accumulator (ALU destination) |
 | 3 | pl | Pointer low byte |
 | 4 | ph | Pointer high byte |
 | 5 | t0 | Temporary |
-| 6 | pg | Page register |
+| 6 | pg | Page register (high byte for page-relative addressing) |
 
 ---
 
-## Instructions (implemented and tested)
+## Instruction Format
 
-### ALU Register (0x00–0x07)
+All instructions are exactly 2 bytes:
+```
+Byte 0: opcode
+Byte 1: operand (register code, immediate value, or branch offset)
+```
 
-`a0 = a0 OP reg[operand]`. Flags: Z, C, N.
+---
+
+## Instructions (68 total)
+
+### ALU Register (0x00–0x07) — `a0 = a0 OP reg[operand]`
+
+Flags: Z, C, N updated.
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
@@ -32,11 +42,13 @@
 | 0x02 | AND rs | a0 = a0 & rs |
 | 0x03 | OR rs | a0 = a0 \| rs |
 | 0x04 | XOR rs | a0 = a0 ^ rs |
-| 0x05 | CMP rs | flags = a0 - rs (no write) |
+| 0x05 | CMP rs | flags = a0 - rs (a0 unchanged) |
 | 0x06 | ADC rs | a0 = a0 + rs + C |
 | 0x07 | SBC rs | a0 = a0 - rs - !C |
 
-### Load Immediate (0x10–0x15)
+### Load Immediate (0x10–0x15) — `rd = imm8`
+
+No flags affected.
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
@@ -47,42 +59,44 @@
 | 0x14 | LI t0, imm | t0 = imm8 |
 | 0x15 | LI pg, imm | pg = imm8 |
 
-### ALU Immediate (0x16–0x1C)
+### ALU Immediate (0x16–0x1C) — `a0 = a0 OP imm8`
 
-`a0 = a0 OP imm8`. Flags: Z, C, N.
+Flags: Z, C, N updated.
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
 | 0x16 | ADDI imm | a0 = a0 + imm8 |
 | 0x17 | SUBI imm | a0 = a0 - imm8 |
-| 0x18 | CMPI imm | flags = a0 - imm8 (no write) |
+| 0x18 | CMPI imm | flags = a0 - imm8 (a0 unchanged) |
 | 0x19 | ANDI imm | a0 = a0 & imm8 |
 | 0x1A | ORI imm | a0 = a0 \| imm8 |
 | 0x1B | XORI imm | a0 = a0 ^ imm8 |
-| 0x1C | TST imm | flags = a0 & imm8 (no write) |
+| 0x1C | TST imm | flags = a0 & imm8 (a0 unchanged) |
 
 ### Load/Store (0x20–0x2D)
 
-| Opcode | Mnemonic | Operation | Cycles |
-|:------:|----------|-----------|:------:|
-| 0x20 | LB a0, (ptr) | a0 = mem[{ph,pl}] | 4 |
-| 0x21 | SB a0, (ptr) | mem[{ph,pl}] = a0 | 4 |
-| 0x22 | LB a0, (ptr+) | a0 = mem[{ph,pl}]; ptr++ | 4 |
-| 0x23 | SB a0, (ptr+) | mem[{ph,pl}] = a0; ptr++ | 4 |
-| 0x24 | MOV rd, a0 | rd = a0 | 3 |
-| 0x25 | MOV a0, rs | a0 = rs | 3 |
-| 0x26 | LB a0, [sp+imm] | a0 = mem[{0x30, sp+imm8}] | 4 |
-| 0x27 | SB a0, [sp+imm] | mem[{0x30, sp+imm8}] = a0 | 4 |
-| 0x28 | LB a0, [zp+imm] | a0 = mem[{0x00, imm8}] | 4 |
-| 0x29 | SB a0, [zp+imm] | mem[{0x00, imm8}] = a0 | 4 |
-| 0x2A | LB a0, [pg:imm] | a0 = mem[{pg, imm8}] | 4 |
-| 0x2B | SB a0, [pg:imm] | mem[{pg, imm8}] = a0 | 4 |
-| 0x2C | PUSH rs | sp--; mem[{0x30,sp}] = rs | 4 |
-| 0x2D | POP rd | rd = mem[{0x30,sp}]; sp++ | 4 |
+No flags affected.
 
-### Branch (0x30–0x36)
+| Opcode | Mnemonic | Operation |
+|:------:|----------|-----------|
+| 0x20 | LB (ptr) | a0 = mem[{ph,pl}] |
+| 0x21 | SB (ptr) | mem[{ph,pl}] = a0 |
+| 0x22 | LB (ptr+) | a0 = mem[{ph,pl}]; {ph,pl}++ |
+| 0x23 | SB (ptr+) | mem[{ph,pl}] = a0; {ph,pl}++ |
+| 0x24 | MOV rd, a0 | reg[operand] = a0 |
+| 0x25 | MOV a0, rs | a0 = reg[operand] |
+| 0x26 | LB [sp+imm] | a0 = mem[{0x30, sp + imm8}] |
+| 0x27 | SB [sp+imm] | mem[{0x30, sp + imm8}] = a0 |
+| 0x28 | LB [zp+imm] | a0 = mem[{0x00, imm8}] |
+| 0x29 | SB [zp+imm] | mem[{0x00, imm8}] = a0 |
+| 0x2A | LB [pg:imm] | a0 = mem[{pg, imm8}] |
+| 0x2B | SB [pg:imm] | mem[{pg, imm8}] = a0 |
+| 0x2C | PUSH rs | sp--; mem[{0x30, sp}] = reg[operand] |
+| 0x2D | POP rd | reg[operand] = mem[{0x30, sp}]; sp++ |
 
-PC-relative. Offset = signed 8-bit added to PC (after PC+2 advance).
+### Branch (0x30–0x36) — PC-relative
+
+Operand = signed 8-bit offset (added to PC after fetch, i.e., relative to instruction after branch).
 
 | Opcode | Mnemonic | Condition |
 |:------:|----------|-----------|
@@ -96,7 +110,7 @@ PC-relative. Offset = signed 8-bit added to PC (after PC+2 advance).
 
 ### Conditional Skip (0x37–0x3A)
 
-Next instruction executes as NOP if condition true.
+Next instruction executes as NOP (all side effects suppressed) if condition is true.
 
 | Opcode | Mnemonic | Skip if |
 |:------:|----------|---------|
@@ -109,32 +123,30 @@ Next instruction executes as NOP if condition true.
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
-| 0x3C | JMP (ptr) | PC = {ph, pl} |
-| 0x3D | JAL (ptr) | push PC; PC = {ph,pl} |
-| 0x3E | RET | pop PC |
+| 0x3C | JMP | PC = {ph, pl} |
+| 0x3D | JAL | push PCH, push PCL; PC = {ph, pl} |
+| 0x3E | RET | pop PCL, pop PCH |
 
-### Shift/Unary (0x40–0x47)
-
-Operates on a0. Flags: Z (approx), C (for shifts).
+### Shift/Unary (0x40–0x47) — operates on a0
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
-| 0x40 | SHL | a0 = {a0[6:0], 0}; C = old bit7 |
-| 0x41 | SHR | a0 = {0, a0[7:1]}; C = old bit0 |
-| 0x42 | ROL | a0 = {a0[6:0], C}; C = old bit7 |
-| 0x43 | ROR | a0 = {C, a0[7:1]}; C = old bit0 |
+| 0x40 | SHL | C = a0[7]; a0 = {a0[6:0], 0} |
+| 0x41 | SHR | C = a0[0]; a0 = {0, a0[7:1]} |
+| 0x42 | ROL | C = a0[7]; a0 = {a0[6:0], old_C} |
+| 0x43 | ROR | C = a0[0]; a0 = {old_C, a0[7:1]} |
 | 0x44 | INC | a0 = a0 + 1 |
 | 0x45 | DEC | a0 = a0 - 1 |
 | 0x46 | NOT | a0 = ~a0 |
 | 0x47 | SWAP | a0 = {a0[3:0], a0[7:4]} |
 
-### Pointer (0x48–0x4A)
+### Pointer Arithmetic (0x48–0x4A)
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
-| 0x48 | INC16 | {ph,pl} = {ph,pl} + 1 |
-| 0x49 | DEC16 | {ph,pl} = {ph,pl} - 1 |
-| 0x4A | ADD16 imm | {ph,pl} = {ph,pl} + imm8 |
+| 0x48 | INC16 | {ph, pl} = {ph, pl} + 1 |
+| 0x49 | DEC16 | {ph, pl} = {ph, pl} - 1 |
+| 0x4A | ADD16 imm | {ph, pl} = {ph, pl} + imm8 |
 
 ### System (0xF0–0xFF)
 
@@ -145,56 +157,63 @@ Operates on a0. Flags: Z (approx), C (for shifts).
 | 0xF2 | EI | IE = 1 (enable interrupts) |
 | 0xF3 | DI | IE = 0 (disable interrupts) |
 | 0xF4 | RTI | Pop flags, pop PCL, pop PCH (return from interrupt) |
-| 0xF5 | TRAP imm | Push PCH, PCL, flags; jump to vector 0xFFF6 |
+| 0xF5 | TRAP imm | Push PCH, PCL, flags; IE=0; PC = mem[0xFFF6:0xFFF7] |
 | 0xFE | NOP | No operation |
-| 0xFF | HLT | Halt (wake on interrupt if IE=1) |
+| 0xFF | HLT | Halt (wakes on NMI or IRQ if IE=1) |
+
+---
+
+## Interrupts
+
+| Source | Trigger | Vector | Maskable |
+|--------|---------|--------|:--------:|
+| NMI | Falling edge on NMI pin | 0xFFFA | No |
+| IRQ | Low level on IRQ pin | 0xFFFE | Yes (IE) |
+| TRAP | TRAP instruction | 0xFFF6 | — |
+| RESET | Power-on / reset pin | 0xFFFC | — |
+
+Interrupt entry (NMI/IRQ from HLT): reads vector, loads PC. Does NOT auto-push (minimal implementation).  
+TRAP: pushes PCH, PCL, flags to stack, then reads vector.  
+RTI: pops flags, PCL, PCH from stack.
 
 ---
 
 ## Memory Map
 
-| Address | Purpose |
-|---------|---------|
-| 0x0000–0x00FF | Zero page (fast globals via LB/SB [zp+imm]) |
-| 0x0100–0x2FFF | RAM (VRAM + workspace) |
-| 0x3000–0x30FF | Stack (256 bytes) |
-| 0x3100–0x7FFF | Free RAM |
-| 0x4000–0x7FFF | Universal bus slot (when card inserted) |
-| 0x8000–0x80FF | I/O |
-| 0xC000–0xFFFF | ROM (32KB, fixed) |
-| 0xFFFC–0xFFFD | Reset vector |
+```
+0x0000–0x00FF  Zero page (fast globals via LB/SB [zp+imm])
+0x0100–0x2FFF  RAM (VRAM, workspace)
+0x3000–0x30FF  Stack (256 bytes, sp indexes here)
+0x3100–0x7FFF  Free RAM / universal bus slot (0x4000–0x7FFF)
+0x8000–0x80FF  I/O devices
+0xC000–0xFFFF  ROM (32KB, fixed)
+0xFFF6–0xFFF7  TRAP vector
+0xFFFA–0xFFFB  NMI vector
+0xFFFC–0xFFFD  RESET vector
+0xFFFE–0xFFFF  IRQ vector
+```
 
 ---
 
-## Timing
+## Timing (cycles per instruction)
 
-| Instruction type | Cycles |
-|-----------------|:------:|
-| ALU reg/imm, LI, shift, MOV, branch(not taken), skip, NOP | 3 |
-| LB/SB, PUSH/POP, branch(taken) | 4 |
-| SB (write) | 5 |
+| Type | Cycles |
+|------|:------:|
+| ALU reg/imm, LI, shift, MOV, skip, NOP | 3 |
+| LB/SB, PUSH/POP | 4–5 |
+| Branch (not taken) | 3 |
+| Branch (taken) | 4 |
 | JMP | 3 |
-| JAL/RET | 5+ |
-| Boot (reset vector load) | 3 |
+| JAL | 5 |
+| RET | 5 |
+| RTI | 6 |
+| TRAP | 7 |
+| HLT→IRQ wake | 3 |
+
+Average: ~3 cycles/instruction → **~1.2M instr/sec @ 3.5 MHz**
 
 ---
 
-## Instruction Count: 66 implemented, 69 tests pass
+## Undefined Opcodes
 
-| Group | Count |
-|-------|:-----:|
-| ALU register | 8 |
-| Load immediate | 6 |
-| ALU immediate | 7 |
-| Load/Store | 14 |
-| Branch | 7 |
-| Skip | 4 |
-| Jump | 3 |
-| Shift/Unary | 8 |
-| Pointer | 3 |
-| System | 8 |
-| **Total** | **68** |
-
-66 unique opcodes implemented in Verilog. 69 tests pass (some instructions tested multiple ways).
-
-Undefined opcodes (0x08-0x0F, 0x1D-0x1F, 0x2E-0x2F, 0x3B, 0x3F, 0x4B-0xEF, 0xF6-0xFD) → treated as NOP.
+All opcodes not listed above (0x08–0x0F, 0x1D–0x1F, 0x2E–0x2F, 0x3B, 0x3F, 0x4B–0xEF, 0xF6–0xFD) are treated as NOP.
