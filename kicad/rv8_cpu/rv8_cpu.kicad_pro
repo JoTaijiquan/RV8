@@ -1,0 +1,39 @@
+{
+  "board": {
+    "3dviewports": [],
+    "design_settings": {
+      "defaults": {
+        "board_outline_line_width": 0.1,
+        "copper_line_width": 0.2,
+        "copper_text_size_h": 1.5,
+        "copper_text_size_v": 1.5,
+        "copper_text_thickness": 0.3
+      }
+    },
+    "layers": []
+  },
+  "meta": {
+    "filename": "rv8_cpu.kicad_pro",
+    "version": 1
+  },
+  "net_settings": {
+    "classes": [
+      {
+        "name": "Default",
+        "wire_width": 6
+      }
+    ]
+  },
+  "schematic": {
+    "drawing": {
+      "default_line_thickness": 6.0
+    },
+    "meta": {
+      "version": 1
+    }
+  },
+  "sheets": [
+    ["", ""]
+  ],
+  "text_variables": {}
+}

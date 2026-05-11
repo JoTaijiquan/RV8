@@ -10,3 +10,8 @@ docs/
 
 # OS
 .DS_Store
+
+# KiCad generated
+kicad/rv8_cpu/*.pdf
+kicad/rv8_cpu/*.net
+kicad/rv8_cpu/*-backups/
