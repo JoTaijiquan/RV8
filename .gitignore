@@ -1,0 +1,11 @@
+# Compiled binaries and simulation outputs
+*.vcd
+*.vvp
+reference/sim
+reference/riscv_cpu_tb
+
+# docs/ has its own git repo (same GitHub repo history)
+docs/
+
+# OS
+.DS_Store
