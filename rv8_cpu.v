@@ -415,10 +415,7 @@ module rv8_cpu (
     output wire        mem_rd_n,
     output wire        mem_wr_n,
     output wire        halt,
-    output wire        sync,
-    input  wire        serial_rx,
-    output reg         serial_tx,
-    output wire        serial_rx_ready
+    output wire        sync
 );
     // Internal wires
     wire [15:0] pc_out;
@@ -565,22 +562,5 @@ module rv8_cpu (
         .halt_out(halt_out), .ie_set(ie_set), .ie_clr(ie_clr),
         .skip_set(skip_set), .int_enter(int_enter),
         .state_out(state)
-    );
-
-    // --- UART I/O ($8000-$80FF) ---
-    wire io_select = (addr_mux[15:8] == 8'h80);
-    wire io_rd = io_select & mem_rd;
-    wire io_wr = io_select & mem_wr;
-    wire [7:0] uart_data_out;
-
-    rv8_uart UART (
-        .clk(clk), .rst_n(rst_n),
-        .addr(addr_mux[7:0]),
-        .data_in(a0_out),
-        .data_out(uart_data_out),
-        .io_rd(io_rd), .io_wr(io_wr),
-        .serial_rx(serial_rx),
-        .serial_tx(serial_tx),
-        .rx_ready(serial_rx_ready)
     );
 endmodule
