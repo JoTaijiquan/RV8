@@ -277,6 +277,7 @@ USB 5V ──►[1N5817]──►[100µF]──┬──► +5V rail
 | /NMI | External | U21 (edge detect) | 1 |
 | /IRQ | External | Control logic | 1 |
 | HALT | Control logic | Clock gate (stops CLK) | 1 |
+| SYNC | Control logic | External (new instruction fetch) | 1 |
 
 ---
 

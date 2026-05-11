@@ -1,6 +1,7 @@
 # Compiled binaries and simulation outputs
 *.vcd
 *.vvp
+sim/lab[1-8]
 reference/sim
 reference/riscv_cpu_tb
 
