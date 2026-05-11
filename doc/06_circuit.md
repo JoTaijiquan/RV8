@@ -1,6 +1,6 @@
 # RV8 — Circuit Diagram (Text Schematic)
 
-**Minimal 8-bit CPU — RISC-inspired, accumulator-based**
+**Minimal 8-bit CPU — Accumulator-based, RISC-inspired**
 
 **23 CPU chips + 4 system chips = 27 total**
 

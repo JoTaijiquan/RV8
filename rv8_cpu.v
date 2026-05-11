@@ -1,5 +1,5 @@
 // ============================================================
-// RV8 CPU — Minimal 8-bit CPU, RISC-inspired, accumulator-based
+// RV8 CPU — Minimal 8-bit CPU, Accumulator-based, RISC-inspired
 // Fixed 2-byte instructions, direct-encoded opcodes
 // Fetch/execute overlap
 // ============================================================

@@ -1,4 +1,4 @@
-# RV8: Minimal 8-bit CPU — RISC-inspired, accumulator-based
+# RV8: Minimal 8-bit CPU — Accumulator-based, RISC-inspired
 
 ## What is This?
 
