@@ -27,6 +27,21 @@ U1 (PC bits 3:0)    U2 (PC bits 7:4)    U3 (PC bits 11:8)   U4 (PC bits 15:12)
 └──────────┘        └──────────┘        └──────────┘        └──────────┘
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab2 lab2_pc_tb.v && vvp lab2
+gtkwave lab2.vcd
+```
+
+**What to check in GTKWave:**
+- `pc[15:0]`: increments by 1 each clock
+- Carry propagation: pc rolls from $000F → $0010, $00FF → $0100
+- Reset: pc snaps to $0000
+
+---
+
 ## Procedure
 
 1. Place U1–U4 on breadboard. Connect VCC (pin 16) and GND (pin 8) on each.

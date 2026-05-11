@@ -65,6 +65,21 @@ U17 (address mux high byte):
   /WE ← /WR
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab7 lab7_pointer_tb.v && vvp lab7
+gtkwave lab7.vcd
+```
+
+**What to check in GTKWave:**
+- `addr_bus`: switches between PC and pointer based on `addr_sel`
+- `ptr`: loads $2000, increments to $2001
+- RAM write/read: $42 stored and retrieved correctly
+
+---
+
 ## Procedure
 
 1. Insert U11, U12 (74HC161). Connect VCC/GND.

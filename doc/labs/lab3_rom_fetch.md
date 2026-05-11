@@ -54,6 +54,21 @@ AT28C256:
   /OE = GND (always enabled for now)
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab3 lab3_rom_tb.v && vvp lab3
+gtkwave lab3.vcd
+```
+
+**What to check in GTKWave:**
+- `pc`: counts up
+- `data_bus`: shows ROM contents matching the test pattern ($AA, $55, $01...)
+- Each clock cycle fetches the next byte
+
+---
+
 ## Procedure
 
 1. Insert AT28C256 (pre-programmed). Connect VCC (pin 28) and GND (pin 14).

@@ -59,6 +59,21 @@ Result LEDs ← S[7:0]
 Carry LED ← U14.C4
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab5 lab5_alu_tb.v && vvp lab5
+gtkwave lab5.vcd
+```
+
+**What to check in GTKWave:**
+- `result`: correct for each ADD/SUB test case
+- `carry`: asserts on overflow ($FF+$01) and no-borrow ($05-$03)
+- All 11 test cases pass in console output
+
+---
+
 ## Procedure
 
 1. Insert U13, U14 (74HC283). Connect VCC (pin 16) and GND (pin 8).

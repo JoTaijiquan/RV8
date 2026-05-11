@@ -60,6 +60,22 @@ U23 (74HC32, OR gates):
   Gate 4: (spare / combining)
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab8 ../rv8_cpu.v lab8_cpu_tb.v && vvp lab8
+gtkwave lab8.vcd
+```
+
+**What to check in GTKWave:**
+- `addr_bus`: fetches from $C000 sequentially
+- `halt`: asserts after loop completes
+- CPU executes LI, ADDI, CMPI, BNE loop, then HLT
+- Full program runs autonomously
+
+---
+
 ## Procedure
 
 1. Insert U18 (74HC138). Wire opcode[7:5] from U5 to inputs A,B,C.

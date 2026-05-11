@@ -54,6 +54,21 @@ U10 (pg):
   Q[7:0] → page register (used in Step 7)
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab6 lab6_regs_tb.v && vvp lab6
+gtkwave lab6.vcd
+```
+
+**What to check in GTKWave:**
+- `a0`: starts at $00, becomes $05, $08, $0B, $0A, $00
+- `result`: shows ALU output before latch
+- Feedback loop: a0 feeds back into ALU input A
+
+---
+
 ## Procedure
 
 1. Insert U7–U10 (74HC574). Connect VCC (pin 20) and GND (pin 10).

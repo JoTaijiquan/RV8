@@ -41,6 +41,23 @@ Build a controllable clock source and clean reset signal for the RV8 CPU.
   (to GND)
 ```
 
+## Simulate First
+
+Before wiring real chips, verify the design in simulation:
+
+```bash
+cd sim/
+iverilog -o lab1 lab1_clock_tb.v && vvp lab1
+gtkwave lab1.vcd   # view waveform
+```
+
+**What to check in GTKWave:**
+- `osc`: continuous 3.5 MHz square wave
+- `clk`: follows osc in RUN mode, single pulses in STEP mode
+- `rst_n`: goes LOW on reset, returns HIGH cleanly
+
+---
+
 ## Procedure
 
 1. Insert 74HC157 on breadboard. Connect VCC (pin 16) and GND (pin 8).

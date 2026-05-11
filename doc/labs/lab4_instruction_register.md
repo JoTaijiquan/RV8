@@ -43,6 +43,22 @@ Clock gating (use AND gate or NAND):
   (Can use 74HC08 AND gate, or wire with a NAND trick)
 ```
 
+## Simulate First
+
+```bash
+cd sim/
+iverilog -o lab4 lab4_ir_tb.v && vvp lab4
+gtkwave lab4.vcd
+```
+
+**What to check in GTKWave:**
+- `state`: toggles 0→1→0→1...
+- `ir_opcode`: latches on even cycles ($11, $16, $FF)
+- `ir_operand`: latches on odd cycles ($05, $03, $00)
+- Each instruction pair captured correctly
+
+---
+
 ## Procedure
 
 1. Insert 74HC74. Use one flip-flop as toggle: wire /Q back to D.
