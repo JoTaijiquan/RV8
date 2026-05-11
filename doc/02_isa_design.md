@@ -2,7 +2,7 @@
 
 # RV8 — Instruction Set Architecture Design
 
-**Project**: RV8 Minimal Educational CPU  
+**Project**: RV8 — Minimal 8-bit CPU, RISC-inspired, accumulator-based
 **Version**: 3.0  
 **Date**: 2026-05-10  
 **Phase**: ISA Design

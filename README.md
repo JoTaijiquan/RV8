@@ -1,4 +1,4 @@
-# 🖥️ Build Your Own Computer: A Simple RISC-V CPU
+# RV8: Minimal 8-bit CPU — RISC-inspired, accumulator-based
 
 ## What is This?
 

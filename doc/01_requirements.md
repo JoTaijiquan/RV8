@@ -2,7 +2,7 @@
 
 # RV8 — Requirements Specification
 
-**Project**: RV8 Minimal Educational CPU  
+**Project**: RV8 — Minimal 8-bit CPU, RISC-inspired, accumulator-based
 **Version**: 4.0  
 **Date**: 2026-05-10  
 **Phase**: Requirements

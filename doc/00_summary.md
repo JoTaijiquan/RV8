@@ -3,6 +3,7 @@
 # RV8 Project — Design Discussion Summary
 
 **Date**: 2026-05-10  
+**Classification**: Minimal 8-bit CPU — RISC-inspired, accumulator-based
 **Status**: Phase 1-2 complete (Requirements + ISA Design)
 
 ---

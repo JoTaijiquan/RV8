@@ -1,7 +1,7 @@
 // ============================================================
-// RV8 CPU — Verilog Implementation
-// 8-bit accumulator CPU, fixed 2-byte instructions
-// Fetch/execute overlap, direct-encoded opcodes
+// RV8 CPU — Minimal 8-bit CPU, RISC-inspired, accumulator-based
+// Fixed 2-byte instructions, direct-encoded opcodes
+// Fetch/execute overlap
 // ============================================================
 
 // --- ALU ---
