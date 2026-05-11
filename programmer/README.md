@@ -134,3 +134,81 @@ Data polling (faster than fixed delay):
 | **Total** | | **~$5** |
 
 No extra ICs needed — the Pico drives the ROM directly while the CPU is held in reset.
+
+---
+
+# Option B: Serial Bootloader (no Pico needed)
+
+Once you burn the bootloader into ROM once (using TL866 or Pico), all future
+programming is done via a $2 USB-serial adapter directly to the CPU board.
+
+## Hardware
+
+```
+PC ──[USB]──► CH340/FT232 ──► CPU board
+               TX ──────────► serial_rx (pin on rv8_cpu)
+               RX ◄────────── serial_tx (pin on rv8_cpu)
+               GND ─────────► GND
+```
+
+No PROG switch needed. No bus takeover. CPU programs itself.
+
+## Updated CPU Pinout (active low = /name)
+
+| Pin | Dir | Function |
+|-----|:---:|----------|
+| clk | IN | System clock (3.5 MHz) |
+| /rst | IN | Reset |
+| /nmi | IN | Non-maskable interrupt |
+| /irq | IN | Interrupt request |
+| addr[15:0] | OUT | Address bus |
+| data[7:0] | I/O | Data bus |
+| /rd | OUT | Memory read |
+| /wr | OUT | Memory write |
+| halt | OUT | CPU halted |
+| sync | OUT | New instruction fetch (debug) |
+| serial_rx | IN | UART receive (from PC TX) |
+| serial_tx | OUT | UART transmit (to PC RX) |
+| serial_rx_ready | OUT | Data available (active high, optional LED) |
+
+**Total: 34 signals + VCC + GND = 36 pins**
+
+## I/O Memory Map
+
+| Address | R/W | Function |
+|:-------:|:---:|----------|
+| $8000 | R | UART RX data (reading clears rx_ready) |
+| $8000 | W | UART TX data (starts transmission) |
+| $8001 | R | Status: bit0=rx_ready, bit1=tx_busy |
+
+## Bootloader Protocol
+
+```
+1. CPU resets → bootloader at $FE00 runs
+2. CPU sends 'R' (0x52) over serial → "ready"
+3. PC sends: length_hi, length_lo (big-endian, max 16KB)
+4. PC sends: raw bytes (written to ROM starting at $C000)
+5. CPU sends 'D' (0x44) → "done"
+6. CPU jumps to $C000 (user program)
+```
+
+## PC Upload (with bootloader)
+
+```bash
+# Assemble
+python3 tools/rv8asm.py programs/fib.asm -f bin -o fib.bin
+
+# Upload (waits for 'R', sends length + data, waits for 'D')
+python3 programmer/rv8upload_serial.py /dev/ttyUSB0 fib.bin
+```
+
+## One-Time Setup
+
+Burn bootloader into ROM once:
+```bash
+python3 tools/rv8asm.py programmer/bootloader.asm -f bin -o bootloader.bin
+# Use TL866 or Pico programmer for this first burn
+minipro -p AT28C256 -w bootloader.bin
+```
+
+After that, all programming is via serial — no programmer hardware needed.
