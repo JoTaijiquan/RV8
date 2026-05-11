@@ -30,6 +30,31 @@ Uses ESP32 NodeMCU for ROM programming and serial communication.
 | PROG | ON | ESP32 drives ROM directly, CPU held in /RST |
 | RUN | OFF | CPU runs, ESP32 bridges USB ↔ MC6850 |
 
+## CPU Board Expansion Connector (40-pin DIP header)
+
+| Pin | Signal | Pin | Signal |
+|:---:|--------|:---:|--------|
+| 1 | A0 | 2 | A1 |
+| 3 | A2 | 4 | A3 |
+| 5 | A4 | 6 | A5 |
+| 7 | A6 | 8 | A7 |
+| 9 | A8 | 10 | A9 |
+| 11 | A10 | 12 | A11 |
+| 13 | A12 | 14 | A13 |
+| 15 | A14 | 16 | A15 |
+| 17 | D0 | 18 | D1 |
+| 19 | D2 | 20 | D3 |
+| 21 | D4 | 22 | D5 |
+| 23 | D6 | 24 | D7 |
+| 25 | /RD | 26 | /WR |
+| 27 | CLK | 28 | /RST |
+| 29 | /NMI | 30 | /IRQ |
+| 31 | HALT | 32 | SYNC |
+| 33 | N/A | 34 | N/A |
+| 35 | N/A | 36 | N/A |
+| 37 | N/A | 38 | N/A |
+| 39 | VCC | 40 | GND |
+
 ## Chip List
 
 | # | Part | Function |
