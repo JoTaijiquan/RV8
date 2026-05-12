@@ -221,7 +221,7 @@ RV801-B (9 chips, $13, no programmer needed)
 RV801-A (8 chips, $15, needs EEPROM programmer)
   "I built a CPU that runs programs!"
        ↓ (same ROM, same programs)
-RV8 (20 chips, $45, 3 breadboards)
+RV8 (27 chips, ~$44, 4 breadboards)
   "Now it's fast enough for games!"
        ↓ (add peripheral board)
 Full Computer (video, sound, keyboard)

@@ -1,13 +1,13 @@
 # RV8 Trainer Board
 
-Peripheral + programmer board. Plugs into CPU board via 34-pin ribbon cable.
+Peripheral + programmer board. Plugs into CPU board via 40-pin ribbon cable.
 Uses ESP32 NodeMCU for ROM programming and serial communication.
 74HCT245 handles 3.3V ↔ 5V level shifting.
 
 ## System Overview
 
 ```
-┌──────────────┐  34-pin   ┌───────────────────────────────────────┐
+┌──────────────┐  40-pin   ┌───────────────────────────────────────┐
 │  CPU Board   │◄─ribbon──►│            Trainer Board              │
 │  27 chips    │  cable    │                                       │
 │  (5V)       │           │  ESP32 NodeMCU ──► USB to PC          │
@@ -175,7 +175,7 @@ RxCLK  ← 1.8432MHz osc
 | LEDs + 330Ω | 8+8 | ~$1.50 |
 | DIP switch (8-pos) | 1 | ~$1 |
 | SPDT toggle (PROG/RUN) | 1 | ~$0.50 |
-| 34-pin IDC + ribbon | 1 | ~$2 |
+| 40-pin IDC + ribbon | 1 | ~$2 |
 | Breadboard | 1 | ~$5 |
 | **Total** | | **~$23** |
 

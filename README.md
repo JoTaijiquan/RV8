@@ -52,32 +52,38 @@ doc/                Design documents
   00_summary.md       Project overview
   01_requirements.md  Requirements spec
   02_isa_design.md    ISA design rationale
-  04_architecture.md  Microarchitecture
-  05_isa_reference.md Instruction set reference (source of truth)
-  06_circuit.md       Circuit diagram (27 chips, pin-by-pin)
+  03_architecture.md  Microarchitecture
+  04_isa_reference.md Instruction set reference (source of truth)
+  05_circuit.md       Circuit diagram (27 chips, pin-by-pin)
+  06_build_guide.md   Step-by-step build (8 modules)
+  07_changelog.md     Version history
+  08_history.md       Development timeline
+  labs/               8 lab sheets with simulation
+  diagrams/           Yosys-generated SVG circuit diagrams
 rtl/                Reference RTL
-  rv8_cpu.v           Behavioral Verilog
+  rv8_cpu.v           Behavioral Verilog (flat, compact)
   rv8_synth.v         Synthesizable/structural version
+sim/                Simulation
+  lab1-lab8_tb.v      Testbenches for each lab module
+  Makefile            Build and run all simulations
 tb/                 Testbench
   tb_rv8_cpu.v        69-test verification suite
+kicad/              KiCad schematic
+  gen_schematic.py    Schematic generator
+  rv8_cpu/            Project files (27 chips, 364 nets)
 tools/              Development tools
   rv8asm.py           Cross-assembler (Python, Intel HEX output)
 programs/           Example programs
   fib.asm             Fibonacci sequence demo
-  fib_tb.v            Fibonacci testbench
 programmer/         ROM programming tools
-  bootloader.asm      Serial bootloader ($FE00-$FFFF)
-  rv8upload.py        Upload via Pico (PROG mode)
+  pico_programmer.py  Pico firmware (PROG mode)
+  rv8upload.py        Upload via Pico
   rv8upload_serial.py Upload via serial (bootloader mode)
 trainer/            Trainer/peripheral board
   README.md           Circuit design (ESP32 + 8 chips)
   rv8_trainer_esp32.ino  ESP32 firmware
 rv801/              Simplified variants (8-11 chips)
-  03_rv801_spec.md    RV801 spec
-  07_rv801_circuit.md RV801 circuit diagrams
 reference/          Old/study designs
-  riscv_cpu.v         32-bit RISC-V (reference)
-  cpu6502.v           6502 (reference)
 ```
 
 ## Hardware
