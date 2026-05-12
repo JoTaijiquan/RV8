@@ -28,8 +28,11 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
 
     // Reg read - uses din directly (operand byte on bus during EX)
     reg [7:0] rs;
+    reg [2:0] rsel;
+    reg [8:0] tmp;
+    reg taken;
+    reg sc;
     always @(*) begin
-        reg [2:0] rsel;
         rsel = (state==EX) ? din[2:0] : ir_opr[2:0];
         case(rsel)
             0:case(din[4:3]) 0:rs=0;1:rs=1;2:rs=8'hFF;3:rs=8'h80;endcase // const gen uses bits[4:3]
@@ -68,7 +71,6 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 ir_opr<=din; pc<=pc+16'd2;
                 if(skip) begin skip<=0; addr_bus<=pc+16'd2; mem_rd_n<=0; state<=F1; end
                 else if(ir_op<=8'h07) begin // ALU reg (0x00-0x07)
-                    reg [8:0] tmp;
                     case(ir_op[2:0])
                         0: tmp = a0 + rs;           // ADD (no carry)
                         1: tmp = a0 - rs;           // SUB (no borrow)
@@ -93,7 +95,6 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                 end
                 else if(ir_op>=8'h16 && ir_op<=8'h1C) begin // ALU imm (0x16-0x1C)
                     // Compute inline (can't rely on ALU module within same clk edge)
-                    reg [8:0] tmp;
                     case(ir_op)
                         8'h16: tmp = a0 + din;           // ADDI (no carry)
                         8'h17: tmp = a0 - din;           // SUBI (no borrow)
@@ -140,7 +141,6 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                     addr_bus<={8'h30,sp}; sp<=sp+8'd1; mem_rd_n<=0; state<=M1;
                 end
                 else if(ir_op>=8'h30 && ir_op<=8'h36) begin // Branches
-                    reg taken;
                     case(ir_op[2:0]) 0:taken=fz; 1:taken=~fz; 2:taken=fc; 3:taken=~fc;
                         4:taken=fn; 5:taken=~fn; 6:taken=1; default:taken=0; endcase
                     if(taken) pc<=pc+16'd2+{{8{din[7]}},din};
@@ -148,7 +148,6 @@ module rv8_cpu(input clk, rst_n, nmi_n, irq_n, output reg [15:0] addr_bus,
                     if(taken) begin addr_bus<=pc+16'd2+{{8{din[7]}},din}; end
                 end
                 else if(ir_op>=8'h37 && ir_op<=8'h3A) begin // Skip
-                    reg sc;
                     case(ir_op)
                         8'h37: sc=fz;   // SKIPZ
                         8'h38: sc=~fz;  // SKIPNZ
