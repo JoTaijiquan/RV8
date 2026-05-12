@@ -72,3 +72,12 @@
 | 18:26 | KiCad v2: chip wiring with wire stubs + labels |
 | 18:28 | ASCII schematic + draw.io block diagram |
 | 18:37 | KiCad v3: human-centric data-flow layout, Verilog signal names |
+| 19:20 | Updated changelog + history with v1.3 |
+| 19:20 | Added dataflow diagram + TTL schematic PDF |
+| 20:32 | Merged trainer into programmer/ |
+| 20:40 | Added full system spec: Trainer, PC, bus slot, BASIC ROM |
+| 20:52 | Reorganized: CPU/, Trainer/, Computer/, Rom/ — each with own requirements |
+| 20:57 | Bus slot: 30-pin → 40-pin (pins 31-38 reserved N/A) |
+| 21:01 | Universal bus slot: 255 devices, device detection, replaceable ROM |
+| 21:06 | Renamed rom/ → Rom/ |
+| 21:20 | Renamed to RV8-Bus: lives on Trainer/Computer, CPU plugs in as card |

@@ -1,5 +1,14 @@
 # RV8 Changelog
 
+## v1.4 — 2026-05-12 21:20
+- RV8-Bus: 40-pin universal backplane on Trainer/Computer boards
+- CPU board plugs into RV8-Bus as a card (not the host)
+- 255 devices, device detection (ID register), replaceable ROM
+- Pin 31 = CART_DETECT for hot-swap ROM cartridges
+- Project reorganized: CPU/, Trainer/, Computer/, Rom/ with own requirements
+- Full system spec: Trainer (LCD, keypad, sound), PC (video, keyboard, gamepads)
+- Rom/ project: BASIC interpreter + monitor + assembler requirements
+
 ## v1.3 — 2026-05-12 19:20
 - KiCad schematic v3: human-centric data-flow layout matching rv8_cpu.v
 - Signal names in schematic match Verilog (pc_inc, alu_result, ptr_out)
