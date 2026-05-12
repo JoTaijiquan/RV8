@@ -1,5 +1,16 @@
 # RV8 Changelog
 
+## v1.3 — 2026-05-12 19:20
+- KiCad schematic v3: human-centric data-flow layout matching rv8_cpu.v
+- Signal names in schematic match Verilog (pc_inc, alu_result, ptr_out)
+- Layout follows pipeline: Fetch → Decode → Execute → Memory → Control
+- Added PNG diagrams (Yosys + Graphviz)
+- Added netlistsvg diagrams (clean digital logic, 5 modules)
+- Added ASCII chip wiring diagram + draw.io block diagram
+- Docs 00-02 rewritten as current (removed historical warnings)
+- All docs renumbered 00-08 for sequential reading
+- Fixed: trainer 40-pin (was 34), rv801 chip count, README structure
+
 ## v1.2 — 2026-05-12 17:50
 - KiCad schematic optimized: labels at pin endpoints, 364/364 nets connected
 - Yosys circuit diagrams (SVG) for all 5 modules

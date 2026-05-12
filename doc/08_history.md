@@ -65,3 +65,10 @@
 | 17:43 | KiCad verified: 18/18 design checks pass |
 | 17:50 | KiCad optimized: labels at pin endpoints, 364/364 connected |
 | 17:54 | Repo reorganized, changelog + history created |
+| 18:00 | Docs 00-02 rewritten as current, numbered 00-08 |
+| 18:05 | Fixed: trainer 40-pin, rv801 chip count, README structure |
+| 18:20 | Yosys PNG circuit diagrams (6 modules) |
+| 18:21 | netlistsvg diagrams (5 modules, clean logic view) |
+| 18:26 | KiCad v2: chip wiring with wire stubs + labels |
+| 18:28 | ASCII schematic + draw.io block diagram |
+| 18:37 | KiCad v3: human-centric data-flow layout, Verilog signal names |
