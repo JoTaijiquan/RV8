@@ -1,33 +1,49 @@
 # RV8 Changelog
 
-## v1.2 (2026-05-12)
-- KiCad schematic: labels at pin endpoints, 364/364 nets connected
-- Yosys circuit diagrams (SVG) for all modules
+## v1.2 — 2026-05-12 17:50
+- KiCad schematic optimized: labels at pin endpoints, 364/364 nets connected
+- Yosys circuit diagrams (SVG) for all 5 modules
 - All .v files converted to standard Verilog-2001/2005
-- Simulation labs verified (labs 1-7 pass, lab 8 full CPU pass)
+- KiCad verified: 18/18 design checks pass
+- Repo reorganized: clean doc/ structure, historical docs to reference/
 
-## v1.1 (2026-05-12)
+## v1.1 — 2026-05-12 02:35
+- Lab sheets: 8 labs with simulation-first workflow
+- Simulation testbenches (Icarus Verilog, labs 1-8 all pass)
+- Build guide: 8 steps, module-by-module with tests
 - KiCad CPU board schematic (27 chips, 390 nets)
-- Simulation testbenches for all 8 labs (Icarus Verilog)
-- Lab sheets (8 labs): step-by-step CPU build with test procedures
-- Build guide (doc/08_build_guide.md)
 - SYNC signal added to circuit doc and 40-pin connector
+- Beginner-friendly sim README
 
-## v1.0 (2026-05-11)
-- 69 tests ALL PASS: complete ISA verified
-- CPU board: 23 CPU chips + 4 system = 27 total
-- 40-pin expansion connector
+## v1.0 — 2026-05-12 01:14
+- CPU board finalized: 23 CPU + 4 system = 27 chips
+- 40-pin DIP expansion connector
 - Trainer board: ESP32 NodeMCU + 74HCT245 level shifting
-- Cross-assembler (tools/rv8asm.py)
-- Pico in-circuit ROM programmer
-- Fibonacci demo runs correctly
+- Pico in-circuit ROM programmer + bootloader
+- Branding: "Minimal 8-bit CPU — Accumulator-based, RISC-inspired"
 
-## v0.5 (2026-05-10)
-- Verilog implementation complete (rv8_cpu.v)
-- Synthesizable structural version (rtl/rv8_synth.v)
-- Architecture verified: 17 states, 23 chips, 730 gates
-- ISA: 68 instructions, direct-encoded opcodes
+## v0.9 — 2026-05-11 23:54
+- Modular rv8_cpu.v (top-level with sub-modules)
+- RV801 docs separated to rv801/
 
-## v0.1 (2026-05-09)
+## v0.8 — 2026-05-11 04:05
+- Fibonacci demo runs correctly (0,1,1,2,3,5,8,13,21,34,55)
+- Circuit diagram: all 27 chips with pin connections
+- Cross-assembler: Python, Intel HEX output, all 68 opcodes
+- Synthesizable structural version (rv8_synth.v)
+
+## v0.5 — 2026-05-11 03:22
+- **69 tests ALL PASS** — complete ISA verified
+- 68 instructions: ALU, load/store, branch, skip, shift, pointer, system
+- TRAP, RTI, NMI, IRQ, constant generator all working
+- Architecture: 17 states, 23 CPU chips, ~730 gates
+
+## v0.3 — 2026-05-11 02:46
+- First working CPU: 9 tests pass
+- Verilog implementation compiles and simulates
+- Basic instructions: LI, ADDI, SUBI, BNE, SB/LB
+
+## v0.1 — 2026-05-10 20:58
 - Initial requirements and ISA design
-- RV801 ultra-minimal spec (8 chips)
+- Direct-encoded opcodes, no microcode
+- Target: 20 CPU chips (later revised to 23)
