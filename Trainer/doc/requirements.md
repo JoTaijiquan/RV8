@@ -35,7 +35,7 @@ Students enter hex code, single-step, observe registers on LEDs/7-seg.
 - MC6850 UART mapped at $8000 (CPU can read/write directly)
 
 ### Expansion
-- Plugs into CPU board 40-pin universal bus slot
+- Has RV8-Bus (40-pin) — CPU board plugs in, plus ROM/peripheral slots
 
 ## I/O Memory Map
 

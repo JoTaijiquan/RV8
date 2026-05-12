@@ -25,10 +25,10 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  CPU BOARD (27 chips + 40-pin universal bus slot) │
+│  CPU BOARD (27 chips, plugs into RV8-Bus)         │
 │  PC → ROM → IR → Control → ALU → Registers      │
 └────────────────────┬─────────────────────────────┘
-                     │ 40-pin expansion
+                     │ RV8-Bus (40-pin)
                      ▼
 ┌──────────────────────────────────────────────────┐
 │  TRAINER BOARD (ESP32 + 8 chips)                 │

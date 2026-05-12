@@ -30,10 +30,9 @@ RV8/
 
 ```
 ┌─────────────────────────────────┐
-│  CPU Board (27 chips)           │
-│  + 40-pin Universal Bus Slot     │  ← You are here
+│  CPU Board (27 chips)           │  ← plugs into RV8-Bus
 └───────────────┬─────────────────┘
-                │ 40-pin connector
+                │ RV8-Bus (40-pin)
     ┌───────────┼───────────┐
     ▼           ▼           ▼
 ┌─────────┐ ┌─────────┐ ┌─────────┐
@@ -41,8 +40,8 @@ RV8/
 │ ~$23    │ │ ~$75    │ │         │
 └────┬────┘ └────┬────┘ └────┬────┘
      └───────────┴───────────┘
-         40-pin Bus Slot
-         (ROM/RAM/I/O cards)
+         RV8-Bus (40-pin)
+         (CPU + ROM + peripherals plug in)
 ```
 
 ## Quick Start

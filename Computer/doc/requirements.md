@@ -50,11 +50,11 @@ Complete 8-bit home computer. Runs BASIC, plays games, connects to TV/monitor.
 - Cassette: audio in/out jacks (shared with sound)
 
 ## Expansion
-- 40-pin universal bus slot on CPU board (directly on the CPU board, not peripheral boards)
+- RV8-Bus (40-pin) on this board — CPU and peripherals plug into it
 
-### Universal Bus Slot (40-pin, on CPU board)
+### RV8-Bus (40-pin, on Trainer/Computer board)
 
-The bus slot is the **only** expansion interface. Everything plugs into it:
+The RV8-Bus is the universal backplane. CPU board and all peripherals plug into it:
 - Trainer board
 - Full PC board
 - ROM cartridges

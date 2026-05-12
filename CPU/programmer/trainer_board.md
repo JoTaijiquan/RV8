@@ -1,6 +1,6 @@
 # RV8 Trainer Board
 
-Peripheral + programmer board. Plugs into CPU board universal bus slot (40-pin).
+Peripheral + programmer motherboard. Has RV8-Bus (40-pin) — CPU plugs in.
 Uses ESP32 NodeMCU for ROM programming and serial communication.
 74HCT245 handles 3.3V ↔ 5V level shifting.
 
@@ -30,7 +30,7 @@ Uses ESP32 NodeMCU for ROM programming and serial communication.
 | PROG | ON | ESP32 drives ROM directly, CPU held in /RST |
 | RUN | OFF | CPU runs, ESP32 bridges USB ↔ MC6850 |
 
-## Universal Bus Slot (40-pin, on CPU board)
+## RV8-Bus Connector (40-pin, on Trainer/Computer board)
 
 | Pin | Signal | Pin | Signal |
 |:---:|--------|:---:|--------|

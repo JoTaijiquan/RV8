@@ -1,6 +1,7 @@
 # RV8 Trainer Board
 
-Programming, debugging, and basic I/O board. Plugs into CPU board via 40-pin connector.
+Programming, debugging, and basic I/O motherboard.
+Has RV8-Bus (40-pin) — CPU board and peripherals plug into it.
 
 ## Status: Design complete (ESP32 basic), full version pending
 
@@ -28,7 +29,7 @@ Programming, debugging, and basic I/O board. Plugs into CPU board via 40-pin con
 | Sound out | 8-bit R-2R DAC + LM386 | $800C |
 | Audio in | LM393 comparator (cassette) | $800E |
 | SD card | SPI via ESP32 | via serial |
-| Bus slot | Plugs into CPU board 40-pin universal bus | — |
+| RV8-Bus | 40-pin slot(s) — CPU + ROM + peripherals plug in | — |
 | I/O decode | 74HC138 | — |
 
 ## Modes

@@ -184,7 +184,7 @@ RTI: pops flags, PCL, PCH from stack.
 0x0000–0x00FF  Zero page (fast globals via LB/SB [zp+imm])
 0x0100–0x2FFF  RAM (VRAM, workspace)
 0x3000–0x30FF  Stack (256 bytes, sp indexes here)
-0x3100–0x7FFF  Free RAM / universal bus slot window (0x4000–0x7FFF)
+0x3100–0x7FFF  Free RAM / RV8-Bus window (0x4000–0x7FFF)
 0x8000–0x80FF  I/O devices
 0xC000–0xFFFF  ROM (32KB, fixed)
 0xFFF6–0xFFF7  TRAP vector

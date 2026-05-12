@@ -78,22 +78,23 @@ $FFFE-$FFFF  IRQ vector
 ```
 ┌──────────────────────────────────────────────┐
 │  CPU Board (27 chips)                        │
-│  + 40-pin Universal Bus Slot (on-board)      │
+│  (plugs into RV8-Bus on Trainer/Computer)    │
 └───────────────┬──────────────────────────────┘
-                │ 40-pin bus (255 devices)
+                │ RV8-Bus (40-pin)
     ┌───────────┼───────────┐
     ▼           ▼           ▼
 Trainer/    Computer/     Cartridges
 (~10 chips)  (~17 chips)  (ROM, RAM, I/O)
 ```
 
-The universal bus slot is on the CPU board. Everything plugs into it:
-- Trainer board, PC board, ROM cartridges, RAM, I/O cards
+The RV8-Bus is on the Trainer/Computer boards (motherboards).
+The CPU board plugs into the RV8-Bus as a card, alongside:
+- ROM cartridges, RAM expansion, I/O cards
 - Up to 255 devices via I/O space ($8000-$80FF)
 - Device detection: read ID register ($00 = empty)
 - Replaceable ROM: cartridge overrides on-board ROM
 
-See `Computer/doc/requirements.md` for full bus slot specification.
+See `Computer/doc/requirements.md` for full RV8-Bus specification.
 
 ## CPU Board Status
 

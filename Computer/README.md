@@ -19,14 +19,14 @@ Complete home computer: video, keyboard, sound, gamepads. Runs BASIC.
 ## Architecture
 
 ```
-CPU Board (40-pin) ──► PC Board
+CPU Board ──► RV8-Bus on PC Board
                          ├── Video: bitmap + attributes → RGB out
                          ├── Keyboard: PS/2 → shift register
                          ├── Sound: DAC → amp → 3.5mm
                          ├── Gamepads: 2× NES → shift register
                          ├── SD card: SPI bit-bang
                          ├── Cassette: audio in/out
-                         └── Plugs into CPU 40-pin universal bus slot
+                         └── RV8-Bus: CPU + ROM + peripherals plug in
 ```
 
 ## Files
