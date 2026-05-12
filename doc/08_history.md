@@ -4,7 +4,17 @@
 
 | Time | Event |
 |------|-------|
-| 20:58 | Project started. Requirements + ISA design (Phase 1-2) |
+| 20:58 | Project started. Requirements + ISA design |
+| — | Decided: 8-bit (not 32-bit RV32I) — 18× fewer gates |
+| — | Decided: fixed 2-byte instructions (not variable 1-3) |
+| — | Decided: accumulator model (not register-to-register) |
+| — | Decided: 5 registers → later expanded to 7 |
+| — | Decided: hardwired control (not microcode ROM) |
+| — | Decided: 8-bit SP on fixed page $30 |
+| — | Decided: auto-increment pointer (ptr+) |
+| — | Decided: NMI + IRQ (2 interrupt lines) |
+| — | Decided: 5V USB power, 3.5 MHz clock |
+| — | Rejected: PC-relative, hardware multiply, DMA, FPU |
 
 ## 2026-05-11 (Day 2) — Implementation
 

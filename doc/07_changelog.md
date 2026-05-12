@@ -45,5 +45,7 @@
 
 ## v0.1 — 2026-05-10 20:58
 - Initial requirements and ISA design
+- Key decisions: 8-bit, fixed 2-byte, accumulator, hardwired control
 - Direct-encoded opcodes, no microcode
-- Target: 20 CPU chips (later revised to 23)
+- Rejected: PC-relative, hardware multiply, DMA, FPU, variable-length
+- Target: 20 CPU chips (later revised to 23, then 27 total)
