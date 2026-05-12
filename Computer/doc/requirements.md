@@ -50,7 +50,41 @@ Complete 8-bit home computer. Runs BASIC, plays games, connects to TV/monitor.
 - Cassette: audio in/out jacks (shared with sound)
 
 ## Expansion
-- 30-pin universal bus slot ($4000-$7FFF, accent shared with VRAM)
+- 40-pin universal bus slot ($4000-$7FFF, shared with VRAM in graphics mode)
+
+### Bus Slot Pinout (40-pin DIP header)
+
+| Pin | Signal | Pin | Signal |
+|:---:|--------|:---:|--------|
+| 1 | A0 | 2 | A1 |
+| 3 | A2 | 4 | A3 |
+| 5 | A4 | 6 | A5 |
+| 7 | A6 | 8 | A7 |
+| 9 | A8 | 10 | A9 |
+| 11 | A10 | 12 | A11 |
+| 13 | A12 | 14 | A13 |
+| 15 | D0 | 16 | D1 |
+| 17 | D2 | 18 | D3 |
+| 19 | D4 | 20 | D5 |
+| 21 | D6 | 22 | D7 |
+| 23 | /CS | 24 | /RD |
+| 25 | /WR | 26 | CLK |
+| 27 | /IRQ | 28 | /NMI |
+| 29 | /RST | 30 | HALT |
+| 31 | N/A | 32 | N/A |
+| 33 | N/A | 34 | N/A |
+| 35 | N/A | 36 | N/A |
+| 37 | N/A | 38 | N/A |
+| 39 | VCC | 40 | GND |
+
+Maps to $4000-$7FFF (16KB window). Accepts:
+- ROM cartridges (32KB game/app)
+- Banked ROM (up to 4MB)
+- RAM expansion (16-512KB)
+- Sound card (YM2149)
+- WiFi card (ESP-01)
+- I/O card (relays, sensors)
+- Prototyping card (blank)
 
 ## Memory Map (PC Board additions)
 

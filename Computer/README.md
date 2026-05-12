@@ -26,7 +26,7 @@ CPU Board (40-pin) ──► PC Board
                          ├── Gamepads: 2× NES → shift register
                          ├── SD card: SPI bit-bang
                          ├── Cassette: audio in/out
-                         └── Bus slot: 30-pin expansion
+                         └── Bus slot: 40-pin expansion
 ```
 
 ## Files
