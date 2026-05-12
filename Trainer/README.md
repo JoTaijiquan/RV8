@@ -28,7 +28,7 @@ Programming, debugging, and basic I/O board. Plugs into CPU board via 40-pin con
 | Sound out | 8-bit R-2R DAC + LM386 | $800C |
 | Audio in | LM393 comparator (cassette) | $800E |
 | SD card | SPI via ESP32 | via serial |
-| Bus slot | 40-pin universal | $4000-$7FFF |
+| Bus slot | Plugs into CPU board 40-pin universal bus | — |
 | I/O decode | 74HC138 | — |
 
 ## Modes

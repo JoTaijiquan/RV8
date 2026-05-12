@@ -30,7 +30,8 @@ RV8/
 
 ```
 ┌─────────────────────────────────┐
-│  CPU Board (27 chips)           │  ← You are here
+│  CPU Board (27 chips)           │
+│  + 40-pin Universal Bus Slot     │  ← You are here
 └───────────────┬─────────────────┘
                 │ 40-pin connector
     ┌───────────┼───────────┐

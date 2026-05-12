@@ -25,7 +25,7 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  CPU BOARD (27 chips, 40-pin connector)          │
+│  CPU BOARD (27 chips + 40-pin universal bus slot) │
 │  PC → ROM → IR → Control → ALU → Registers      │
 └────────────────────┬─────────────────────────────┘
                      │ 40-pin expansion

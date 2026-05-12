@@ -76,18 +76,24 @@ $FFFE-$FFFF  IRQ vector
 ## System Architecture
 
 ```
-┌─────────────────────────────────┐
-│  CPU Board (27 chips)           │
-│  This project                   │
-└───────────────┬─────────────────┘
-                │ 40-pin connector
+┌──────────────────────────────────────────────┐
+│  CPU Board (27 chips)                        │
+│  + 40-pin Universal Bus Slot (on-board)      │
+└───────────────┬──────────────────────────────┘
+                │ 40-pin bus (255 devices)
     ┌───────────┼───────────┐
     ▼           ▼           ▼
-Trainer/    Computer/     rom/
-(~10 chips)  (~17 chips)  (32KB software)
+Trainer/    Computer/     Cartridges
+(~10 chips)  (~17 chips)  (ROM, RAM, I/O)
 ```
 
-See separate project folders for peripheral boards and ROM software.
+The universal bus slot is on the CPU board. Everything plugs into it:
+- Trainer board, PC board, ROM cartridges, RAM, I/O cards
+- Up to 255 devices via I/O space ($8000-$80FF)
+- Device detection: read ID register ($00 = empty)
+- Replaceable ROM: cartridge overrides on-board ROM
+
+See `Computer/doc/requirements.md` for full bus slot specification.
 
 ## CPU Board Status
 
