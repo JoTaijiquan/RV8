@@ -52,7 +52,7 @@ $FFF6-$FFFF  Vectors (TRAP, NMI, RESET, IRQ)
 ## Files
 
 ```
-rom/
+Rom/
 ├── README.md          ← this file
 ├── doc/
 │   └── requirements.md

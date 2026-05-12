@@ -9,7 +9,7 @@ RV8/
 ├── CPU/            ← CPU board (27 chips) — DONE
 ├── Trainer/        ← Trainer board (~10 chips + ESP32) — in progress
 ├── Computer/       ← Full PC board (~17 chips, video+keyboard) — planned
-├── rom/            ← System ROM (BASIC + monitor) — planned
+├── Rom/            ← System ROM (BASIC + monitor) — planned
 ├── Reference/      ← Study designs (6502, RISC-V)
 └── rv8_cpu.v       ← Main Verilog (top-level)
 ```
@@ -65,4 +65,4 @@ xdg-open CPU/doc/diagrams/rv8_cpu_schematic.pdf
 | CPU (27 chips) | ✅ Designed + simulated | `CPU/` |
 | Trainer (~10 + ESP32) | 🔧 Basic design done | `Trainer/` |
 | Full PC (~17 chips) | ⬜ Planned | `Computer/` |
-| System ROM (BASIC) | ⬜ Planned | `rom/` |
+| System ROM (BASIC) | ⬜ Planned | `Rom/` |
