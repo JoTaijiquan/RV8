@@ -1,5 +1,33 @@
 # RV8 Changelog
 
+## v1.6 — 2026-05-13 01:36
+- Expanded from 8 labs to 12 labs — full 68-instruction ISA coverage
+- Lab 9: Full ALU (AND/OR/XOR/shift/rotate/INC/DEC/NOT/SWAP)
+- Lab 10: Stack + Subroutines (PUSH/POP/JAL/RET)
+- Lab 11: Addressing Modes (zero-page, sp+imm, pg:imm, MOV, const gen, LI all regs)
+- Lab 12: Interrupts + Skip (NMI/IRQ/TRAP/RTI/SKIP/EI/DI/HLT/NOP)
+- Rewrote Thai versions for all 12 labs in concise lab-sheet style (middle school friendly)
+- Updated 06_build_guide.md: 12-lab structure with pin-by-pin wiring tables (Thai)
+- Added full chip list with U-numbers and TTL names (U1–U25 + ROM + RAM)
+- Instruction coverage table: Lab 8→15, Lab 9→38, Lab 10→42, Lab 11→58, Lab 12→68
+
+## v1.5 — 2026-05-13 00:08
+- Fixed rv8_cpu.v: all 69 testbench assertions pass (was broken, 0 passing)
+- Rewrote instruction decode: explicit opcode range matching (not broken [7:5] grouping)
+- Expanded ALU to 4-bit op: added ROL, ROR, INC, DEC, NOT, SWAP natively
+- Fixed Verilog ~carry_in width promotion bug in SUB/SBC
+- Added operand_mux: correct operand source per pipeline stage (data_in in S1, ir_operand in S2+)
+- Fixed register write data path: memory reads only in S2, not during fetch
+- Added wr_sel, alu_b_sel control signals for proper register/ALU routing
+- Added sp_inc/sp_dec to regfile, ptr_add to pointer module
+- Fixed branch offset (+1 for missed PC increment)
+- Fixed PUSH pre-decrement addressing (addr_src=7)
+- Implemented vector fetch (S5/S6) for reset, NMI, IRQ, TRAP
+- Implemented RTI: pop flags/PCL/PCH with flags restore
+- Added instr_type registered flag for multi-cycle instruction tracking
+- Fixed skip condition mapping to match actual opcode encoding
+- Fixed constant generator select bits (operand[4:3] not [3:2])
+
 ## v1.4 — 2026-05-12 21:48
 - RV8-Bus: 40-pin universal backplane on Trainer/Computer boards
 - CPU board plugs into RV8-Bus as a card (not the host)

@@ -115,3 +115,122 @@ Note: For SUB, carry=1 means "no borrow" (result ≥ 0).
 - Input B comes from either a register or the immediate operand.
 - The full ALU also supports AND, OR, XOR, SHL, SHR — these will be added via additional muxing in Step 8.
 - The Zero flag (Z) is simply: NOR all 8 result bits. The Negative flag (N) is result bit 7.
+
+## Thai Version
+
+---
+
+# แลป 5: ALU (หน่วยคำนวณ)
+
+---
+
+## เป้าหมาย
+
+สร้างวงจรคำนวณ 8 บิตที่ทำ บวก (ADD) และ ลบ (SUB) ได้
+
+---
+
+## ความรู้พื้นฐาน
+
+**ALU (Arithmetic Logic Unit)** = เครื่องคิดเลขของ CPU รับค่า 2 ตัว ให้ผลลัพธ์ 1 ตัว
+
+**74HC283** = ชิปบวกเลข 4 บิต ใช้ 2 ตัวต่อกันได้ 8 บิต
+
+**74HC86** = ชิป XOR ใช้กลับบิตของ B เพื่อทำการลบ
+
+**วิธีลบ:** A - B = A + (กลับบิต B) + 1 (เรียกว่า two's complement)
+
+---
+
+## อุปกรณ์
+
+| อุปกรณ์ | จำนวน | ทำหน้าที่อะไร |
+|---------|:------:|--------------|
+| 74HC283 | 2 | ตัวบวก 4 บิต × 2 = 8 บิต |
+| 74HC86 | 1 | XOR สำหรับกลับบิต (ลบ) |
+| DIP switch 8 ตัว | 1 | ตั้งค่า A (แทน accumulator) |
+| LED + 330Ω | 8+1 | แสดงผลลัพธ์ + Carry |
+
+---
+
+## ผังวงจร
+
+```
+DIP switches ──► A [7:0]
+                    │
+                    ▼
+              ┌──────────┐
+              │  74HC283 │
+              │  U13+U14 │──► Result [7:0] ──► LED 8 ดวง
+              └──────────┘
+                    ▲          Carry ──► LED 1 ดวง
+                    │
+B [7:0] ──► 74HC86 (XOR กับ SUB)
+(จาก U6)        ▲
+                 │
+            สวิตช์ SUB (0=บวก, 1=ลบ)
+                 │
+                 └──► U13 C0 (carry-in)
+```
+
+**บวก:** SUB=0 → B ผ่านตรง, C0=0 → ผลลัพธ์ = A + B
+
+**ลบ:** SUB=1 → B ถูกกลับบิต, C0=1 → ผลลัพธ์ = A - B
+
+---
+
+## ขั้นตอนต่อวงจร
+
+1. เสียบ U13, U14 (74HC283) ต่อ VCC (pin 16) และ GND (pin 8)
+2. เสียบ U15 (74HC86) ต่อ VCC (pin 14) และ GND (pin 7)
+3. ต่อ DIP switches → A input ของ U13 และ U14
+4. ต่อ operand (จาก U6 หรือ switches) → XOR input ของ U15
+5. ต่อสวิตช์ SUB → XOR input อีกข้างของ U15 (ทุก gate)
+6. ต่อ output ของ U15 → B input ของ U13 และ U14
+7. ต่อสวิตช์ SUB → U13 C0 (pin 7)
+8. ต่อ U13 C4 (pin 9) → U14 C0 (pin 7) — ทดจากต่ำไปสูง
+9. ต่อ LED 8 ดวง ที่ output ของ U13 และ U14
+10. ต่อ LED 1 ดวง ที่ U14 C4 (Carry out)
+
+---
+
+## ทดสอบ
+
+| ขั้น | A (switches) | B (operand) | SUB | ผลที่ถูกต้อง | Carry |
+|:----:|:---:|:---:|:---:|:---:|:---:|
+| 1 | $05 | $03 | 0 | $08 | 0 |
+| 2 | $FF | $01 | 0 | $00 | 1 |
+| 3 | $05 | $03 | 1 | $02 | 1 |
+| 4 | $03 | $05 | 1 | $FE | 0 |
+| 5 | $AA | $55 | 0 | $FF | 0 |
+| 6 | $80 | $80 | 0 | $00 | 1 |
+
+หมายเหตุ: ตอนลบ Carry=1 หมายถึง "ไม่ติดลบ" (ผลลัพธ์ ≥ 0)
+
+---
+
+## เช็คลิสต์ผ่าน
+
+- [ ] บวก: $05 + $03 = $08, Carry=0
+- [ ] บวกล้น: $FF + $01 = $00, Carry=1
+- [ ] ลบ: $05 - $03 = $02, Carry=1
+- [ ] ลบติดลบ: $03 - $05 = $FE, Carry=0
+- [ ] ทดจาก U13 ไป U14 ทำงานถูกต้อง
+
+---
+
+## จำลองก่อนต่อจริง
+
+```bash
+cd sim/
+iverilog -o lab5 lab5_alu_tb.v && vvp lab5
+gtkwave lab5.vcd
+```
+
+---
+
+## หมายเหตุ
+
+- ใน CPU จริง input A มาจาก register a0 (ไม่ใช่ DIP switch) — จะเปลี่ยนใน Lab 6
+- ALU เต็มรูปแบบยังทำ AND, OR, XOR, SHL, SHR ได้ — จะเพิ่มใน Lab 8
+- Flag Z (ศูนย์) = ผลลัพธ์ทุกบิตเป็น 0, Flag N (ลบ) = บิตที่ 7 ของผลลัพธ์

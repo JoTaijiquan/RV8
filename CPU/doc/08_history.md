@@ -83,3 +83,32 @@
 | 21:20 | Renamed to RV8-Bus: lives on Trainer/Computer, CPU plugs in as card |
 | 21:39 | Computer: analog joystick (X/Y + 4 buttons + 4-bit LED output) |
 | 21:48 | Generated CPU netlists: Verilog, JSON, EDIF, BLIF, SPICE |
+
+## 2026-05-13 (Day 4) — CPU Bug Fixes + Lab Expansion
+
+| Time | Event |
+|------|-------|
+| 00:08 | **rv8_cpu.v fully fixed: 69/69 tests pass** |
+| — | Root cause: instruction decode used opcode[7:5] grouping that didn't match actual encoding |
+| — | Root cause: ALU only had 3-bit op (8 ops), needed 4-bit (14 ops) for all shift/unary |
+| — | Root cause: Verilog `~carry_in` width promotion bug (9-bit NOT instead of 1-bit) |
+| — | Root cause: operand timing — S1 execute used stale ir_operand instead of data_in |
+| — | Root cause: reg write data mux picked data_in during fetch (mem_rd=1 in S0/S1) |
+| — | Root cause: wr_sel hardcoded to a0, no routing to other registers |
+| — | Root cause: branch offset didn't account for missed PC increment |
+| — | Root cause: PUSH used post-decrement address instead of pre-decrement |
+| — | Root cause: multi-cycle ops (RTI/RET) lost opcode when ir_load0 reused ir_opcode |
+| — | Fix: added instr_type registered flag in control unit for S2/S3/S4 dispatch |
+| — | Fix: added vector_addr register for reset/NMI/IRQ/TRAP vector fetch |
+| — | Fix: implemented full RTI (pop flags → pop PCL → pop PCH → load PC) |
+| 00:48 | Rewrote Lab 1 Thai version — concise lab-sheet style for middle school |
+| 00:53 | Rewrote Lab 2 Thai version — same style |
+| 00:57 | Rewrote Lab 3 Thai version — same style + LED pattern guide |
+| 01:01 | Added Thai versions to Labs 4–8 in lab-sheet style |
+| 01:10 | Created Lab 9: Full ALU (AND/OR/XOR/shift/rotate/INC/DEC/NOT/SWAP) |
+| 01:10 | Created Lab 10: Stack + Subroutines (PUSH/POP/JAL/RET) |
+| 01:10 | Created Lab 11: Addressing Modes (all memory modes + MOV + const gen) |
+| 01:10 | Created Lab 12: Interrupts + Skip (NMI/IRQ/TRAP/RTI — completes 68 ISA) |
+| 01:22 | Rewrote 06_build_guide.md for 12-lab structure |
+| 01:26 | Added Thai build guide with pin-by-pin wiring tables |
+| 01:31 | Added full TTL names to chip list (U1–U25) |

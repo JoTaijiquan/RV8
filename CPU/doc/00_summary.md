@@ -46,7 +46,7 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 | 03 | architecture.md | Datapath, FSM, timing (17 states) |
 | 04 | isa_reference.md | All 68 instructions (source of truth) |
 | 05 | circuit.md | 27 chips, pin-level connections |
-| 06 | build_guide.md | 8-step module-by-module build |
+| 06 | build_guide.md | 12-step module-by-module build |
 | 07 | changelog.md | Version history |
 | 08 | history.md | Detailed development timeline |
 
@@ -55,7 +55,7 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 ```
 rv8_cpu.v              — Verilog (modular, 69 tests pass)
 rtl/rv8_cpu.v          — Verilog (flat, compact)
-doc/labs/              — 8 lab sheets with simulation
+doc/labs/              — 12 lab sheets with simulation (Thai+English)
 sim/                   — Icarus Verilog testbenches
 kicad/rv8_cpu/         — KiCad schematic
 tools/rv8asm.py        — Cross-assembler
@@ -67,7 +67,8 @@ tools/rv8asm.py        — Cross-assembler
 - ✅ Verilog verified (69 tests pass)
 - ✅ Circuit designed (27 chips)
 - ✅ KiCad schematic (364 nets connected)
-- ✅ Lab sheets (8 labs with simulation)
+- ✅ Lab sheets (12 labs, full ISA coverage, Thai+English)
+- ✅ Build guide with pin-by-pin wiring tables
 - ⬜ Breadboard build
 - ⬜ PCB layout
 - ⬜ Trainer board build

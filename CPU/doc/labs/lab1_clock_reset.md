@@ -92,3 +92,123 @@ gtkwave lab1.vcd   # view waveform
 - The CLK LED won't visibly blink at 3.5 MHz — it will appear always-on. This is normal.
 - In STEP mode, you'll use this to manually clock the CPU one cycle at a time for debugging.
 - Keep wires to the oscillator short to avoid noise.
+
+## Thai Version
+
+---
+
+# แลป 1: วงจร Clock และ Reset
+
+---
+
+## เป้าหมาย
+
+สร้าง "หัวใจ" ของคอมพิวเตอร์ — สัญญาณ Clock ที่เลือกได้ 2 โหมด และปุ่ม Reset
+
+---
+
+## ความรู้พื้นฐาน
+
+**Clock (CLK)** = จังหวะการทำงาน ทุกครั้งที่ CLK กระพริบ 1 ครั้ง CPU ทำงาน 1 ขั้นตอน
+
+**Reset (/RST)** = ปุ่มเริ่มใหม่ กดแล้ว CPU กลับไปเริ่มต้น
+
+**RUN mode** = Clock วิ่งเอง 3.5 ล้านครั้ง/วินาที (เร็วมาก)
+
+**STEP mode** = Clock หยุด กดปุ่มทีละครั้ง (สำหรับดีบัก)
+
+---
+
+## อุปกรณ์
+
+| อุปกรณ์ | จำนวน | ทำหน้าที่อะไร |
+|---------|:------:|--------------|
+| Crystal Oscillator 3.5 MHz | 1 | สร้างจังหวะ Clock |
+| 74HC157 | 1 | สวิตช์เลือก RUN/STEP |
+| ปุ่มกด | 2 | STEP กับ RESET |
+| ตัวต้านทาน 10KΩ | 2 | ดึงสัญญาณให้เป็น HIGH |
+| ตัวเก็บประจุ 100nF | 2 | กันปุ่มเด้ง |
+| LED + ตัวต้านทาน 330Ω | 2 | ไฟแสดงสถานะ |
+
+---
+
+## ผังวงจร
+
+```
+                         ┌────────────┐
+  Oscillator ──────────► │ pin 2 (A)  │
+                         │            │
+  ปุ่ม STEP ───[10K]──► │ pin 3 (B)  │──► pin 4 (Y) ──► CLK
+         │               │            │
+        100nF            │ pin 1 (S)  │
+         │               └────────────┘
+        GND                    ▲
+                               │
+                        สวิตช์ RUN/STEP
+
+
+  วงจร Reset:
+
+  +5V ──[10K]──┬──► /RST ──► LED ──[330Ω]──► GND
+               │
+  ปุ่ม RESET──┘
+  (ต่อลง GND) │
+              100nF
+               │
+              GND
+```
+
+---
+
+## ขั้นตอนต่อวงจร
+
+1. เสียบ 74HC157 ลง breadboard
+2. ต่อไฟเลี้ยง: pin 16 → +5V, pin 8 → GND
+3. ต่อ Oscillator → pin 2
+4. ต่อปุ่ม STEP (ผ่าน 10K pull-up + 100nF กัน bounce) → pin 3
+5. ต่อสวิตช์ RUN/STEP → pin 1
+6. ต่อ pin 15 → GND (เปิดใช้งานชิปตลอด)
+7. pin 4 = CLK output → ต่อ LED + 330Ω
+8. สร้างวงจร Reset ตามผัง
+9. ต่อ LED ที่ /RST
+
+---
+
+## ทดสอบ
+
+| ขั้น | ทำอะไร | ผลที่ถูกต้อง |
+|:----:|--------|-------------|
+| 1 | เลื่อนสวิตช์ไป RUN | LED CLK ติดค้าง (เร็วเกินจะเห็นกระพริบ) |
+| 2 | เลื่อนสวิตช์ไป STEP | LED CLK ดับ |
+| 3 | กดปุ่ม STEP | LED CLK กระพริบ 1 ครั้งต่อ 1 กด |
+| 4 | กดปุ่ม RESET | LED RST ติด, สาย /RST = 0V |
+| 5 | ปล่อยปุ่ม RESET | LED RST ดับ, สาย /RST = 5V |
+
+---
+
+## เช็คลิสต์ผ่าน
+
+- [ ] RUN mode: LED CLK ติดค้าง (Clock ทำงาน)
+- [ ] STEP mode: กด 1 ครั้ง = กระพริบ 1 ครั้ง
+- [ ] กด RESET: /RST เป็น LOW
+- [ ] ปล่อย RESET: /RST กลับเป็น HIGH สะอาด
+
+---
+
+## จำลองก่อนต่อจริง (ถ้ามีคอมพิวเตอร์)
+
+```bash
+cd sim/
+iverilog -o lab1 lab1_clock_tb.v && vvp lab1
+gtkwave lab1.vcd
+```
+
+ดูคลื่นสัญญาณ: `osc` ต้องเป็นคลื่นสี่เหลี่ยม, `clk` ต้องเลือกตามโหมด, `rst_n` ต้องสะอาด
+
+---
+
+## หมายเหตุ
+
+- LED ที่ต่อกับ Clock จะดูเหมือนติดตลอดใน RUN mode — เป็นเรื่องปกติ เพราะกระพริบ 3.5 ล้านครั้ง/วินาที ตาเราเห็นไม่ทัน
+- STEP mode ใช้ตอนดีบัก — กดทีละครั้งเพื่อดูว่า CPU ทำอะไรในแต่ละ cycle
+- ต่อสายจาก Oscillator ให้สั้นที่สุด เพื่อลดสัญญาณรบกวน

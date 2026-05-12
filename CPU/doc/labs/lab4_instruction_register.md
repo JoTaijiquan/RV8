@@ -104,3 +104,123 @@ $0004: $FF $00    ; HLT         (opcode=$FF, operand=$00)
 - In the final CPU, the state machine is more complex (S0→S1→S2→...) for multi-cycle instructions. This 2-state version is sufficient for fetch testing.
 - The 74HC08 AND gate for clock gating will be part of U22 in the final build.
 - U5 outputs (opcode bits) will later drive the control unit decode logic.
+
+## Thai Version
+
+---
+
+# แลป 4: Instruction Register (ตัวเก็บคำสั่ง)
+
+---
+
+## เป้าหมาย
+
+เก็บ opcode (ไบต์ที่ 1) และ operand (ไบต์ที่ 2) ของคำสั่งแยกกันคนละตัว
+
+---
+
+## ความรู้พื้นฐาน
+
+**คำสั่ง RV8 มี 2 ไบต์เสมอ:**
+- ไบต์แรก = **opcode** (บอกว่าทำอะไร เช่น บวก, ลบ, กระโดด)
+- ไบต์ที่สอง = **operand** (บอกว่าทำกับอะไร เช่น ค่า 5, register t0)
+
+**74HC574** = ตัวเก็บค่า 8 บิต เมื่อ CLK กระพริบจะจำค่าที่อยู่บน Data Bus
+
+**State (สถานะ)** = CPU สลับไปมาระหว่าง:
+- S0: อ่าน opcode → เก็บใน U5
+- S1: อ่าน operand → เก็บใน U6
+
+---
+
+## อุปกรณ์
+
+| อุปกรณ์ | จำนวน | ทำหน้าที่อะไร |
+|---------|:------:|--------------|
+| 74HC574 | 2 | เก็บ opcode (U5) และ operand (U6) |
+| 74HC74 | 1 | สร้างสัญญาณสลับ S0/S1 |
+| LED + 330Ω | 8 | แสดงค่า opcode |
+
+---
+
+## ผังวงจร
+
+```
+                    74HC74 (toggle)
+                    D ← /Q (ต่อกลับ)
+                    CLK ← CLK
+                    Q = state (0=S0, 1=S1)
+                        │
+            ┌───────────┼───────────┐
+            ▼                       ▼
+  U5 (opcode)              U6 (operand)
+  CLK = CLK AND /Q         CLK = CLK AND Q
+  D ← Data Bus             D ← Data Bus
+  Q → LED + ไปถอดรหัส      Q → ไปใช้เป็นค่า
+```
+
+---
+
+## เตรียมก่อนทำ: โปรแกรม ROM
+
+```
+ตำแหน่ง   ค่า      ความหมาย
+$0000     $11      opcode: LI a0
+$0001     $05      operand: ค่า 5
+$0002     $16      opcode: ADDI
+$0003     $03      operand: ค่า 3
+$0004     $FF      opcode: HLT
+$0005     $00      operand: (ไม่ใช้)
+```
+
+---
+
+## ขั้นตอนต่อวงจร
+
+1. เสียบ 74HC74 ต่อ /Q กลับไป D (สร้าง toggle) ต่อ CLK และ /RST
+2. เสียบ U5 (74HC574) ต่อ D จาก Data Bus, CLK = CLK AND /Q
+3. เสียบ U6 (74HC574) ต่อ D จาก Data Bus, CLK = CLK AND Q
+4. ต่อ /OE ของทั้งสองตัว → GND
+5. ต่อ LED ที่ output ของ U5 (แสดง opcode)
+
+---
+
+## ทดสอบ (ใช้ STEP mode)
+
+| ขั้น | ทำอะไร | ผลที่ถูกต้อง |
+|:----:|--------|-------------|
+| 1 | กด RESET | State = S0 |
+| 2 | กด STEP 1 ครั้ง | U5 เก็บ $11 (opcode), state → S1 |
+| 3 | กด STEP 1 ครั้ง | U6 เก็บ $05 (operand), state → S0 |
+| 4 | กด STEP 1 ครั้ง | U5 เก็บ $16 (opcode ถัดไป) |
+| 5 | กด STEP 1 ครั้ง | U6 เก็บ $03 (operand ถัดไป) |
+| 6 | กด STEP 1 ครั้ง | U5 เก็บ $FF (HLT) |
+| 7 | กด RESET | กลับไปคำสั่งแรก |
+
+---
+
+## เช็คลิสต์ผ่าน
+
+- [ ] U5 เก็บค่าเฉพาะตอน S0 (cycle คู่)
+- [ ] U6 เก็บค่าเฉพาะตอน S1 (cycle คี่)
+- [ ] ค่าที่เก็บตรงกับ ROM
+- [ ] State สลับสะอาด ไม่กระพริบซ้ำ
+- [ ] RESET ทำให้ state กลับเป็น S0
+
+---
+
+## จำลองก่อนต่อจริง
+
+```bash
+cd sim/
+iverilog -o lab4 lab4_ir_tb.v && vvp lab4
+gtkwave lab4.vcd
+```
+
+---
+
+## หมายเหตุ
+
+- ใน CPU จริง state machine ซับซ้อนกว่านี้ (มีหลาย state สำหรับ memory access)
+- Output ของ U5 (opcode) จะไปเข้า Control Unit ใน Lab 8
+- Lab ถัดไป (Lab 5) จะสร้าง ALU สำหรับคำนวณ
