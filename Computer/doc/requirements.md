@@ -40,10 +40,40 @@ Complete 8-bit home computer. Runs BASIC, plays games, connects to TV/monitor.
 - CPU-driven via IRQ timer (~15 kHz sample rate)
 - I/O address: $800C (same as trainer)
 
-## Gamepads
-- 2× NES-style controllers (active low, active high)
-- 74HC165 shift register per pad
-- I/O address: $8020 (pad 1), $8022 (pad 2)
+## Gamepads / Joysticks
+- 2× analog joystick ports (X/Y axes + 4 buttons each)
+- Analog: RC timing via 555/NE556 or ADC (8-bit per axis)
+- 4 buttons per port (directly readable, accent active-low)
+- 4-bit output per port (accent accent LEDs, rumble, or other feedback)
+- I/O address: $8020 (port 1), $8028 (port 2)
+
+### Joystick Port Pinout (DB-9 or DIN)
+
+| Pin | Function |
+|:---:|----------|
+| 1 | X axis (analog) |
+| 2 | Y axis (analog) |
+| 3 | Button 1 (fire) |
+| 4 | Button 2 |
+| 5 | Button 3 |
+| 6 | Button 4 |
+| 7 | Output bit 0 (LED/rumble) |
+| 8 | Output bit 1 |
+| 9 | Output bit 2 |
+| 10 | Output bit 3 |
+| 11 | VCC (+5V) |
+| 12 | GND |
+
+### Joystick I/O Registers
+
+| Address | Read | Write |
+|:-------:|------|-------|
+| $8020 | Port 1: X axis (8-bit) | Port 1: output[3:0] |
+| $8021 | Port 1: Y axis (8-bit) | — |
+| $8022 | Port 1: buttons[3:0] | — |
+| $8028 | Port 2: X axis (8-bit) | Port 2: output[3:0] |
+| $8029 | Port 2: Y axis (8-bit) | — |
+| $802A | Port 2: buttons[3:0] | — |
 
 ## Storage
 - SD card: SPI via I/O port bit-bang ($8030)
@@ -118,7 +148,8 @@ Multiple devices share the bus simultaneously via address decoding:
 |:-------:|:---------:|--------|
 | $8000 | $10 | UART (MC6850) — Trainer |
 | $8010 | $20 | Keyboard — PC board |
-| $8020 | $21 | Gamepad 1 — PC board |
+| $8020 | $21 | Joystick port 1 (analog + buttons + LED out) |
+| $8028 | $22 | Joystick port 2 |
 | $8030 | $30 | SD card — any board |
 | $8040 | $40 | Sound DAC — any board |
 | $8050 | $50 | LCD display — Trainer |
@@ -144,7 +175,7 @@ Maps to full address space:
 ```
 $4000-$5AFF  Video RAM (bitmap + attributes) — accent shared with bus slot
 $8010        Keyboard data/status
-$8020-$8022  Gamepad 1 & 2
+$8020-$802A  Joystick port 1 & 2 (analog X/Y + 4 buttons + 4-bit output)
 $8030        SD card SPI port
 ```
 
@@ -158,7 +189,9 @@ $8030        SD card SPI port
 | 74HC138 | 1 | Video timing |
 | 74HC257 | 2 | Video/CPU address mux |
 | 6264 | 1 | 8KB video RAM |
-| 74HC165 | 3 | Keyboard + 2× gamepad |
+| 74HC165 | 1 | Keyboard (PS/2 shift-in) |
+| 74HC574 | 2 | Joystick output latches (4-bit × 2 ports) |
+| NE556 | 2 | Analog joystick timing (X/Y per port) |
 | 74HC595 | 1 | SD card SPI |
 | 74HC74 | 1 | Vsync NMI + timing |
 | LM386 | 1 | Audio amplifier |
