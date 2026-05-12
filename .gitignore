@@ -1,17 +1,18 @@
-# Compiled binaries and simulation outputs
+# Build artifacts
 *.vcd
 *.vvp
+*.bin
 sim/lab[1-8]
-reference/sim
-reference/riscv_cpu_tb
-
-# docs/ has its own git repo (same GitHub repo history)
-docs/
-
-# OS
-.DS_Store
 
 # KiCad generated
 kicad/rv8_cpu/*.pdf
 kicad/rv8_cpu/*.net
 kicad/rv8_cpu/*-backups/
+kicad/rv8_cpu/~*
+kicad/rv8_cpu/*.kicad_prl
+
+# Reference (old, has own history)
+docs/
+
+# OS
+.DS_Store
