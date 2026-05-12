@@ -81,3 +81,5 @@
 | 21:01 | Universal bus slot: 255 devices, device detection, replaceable ROM |
 | 21:06 | Renamed rom/ → Rom/ |
 | 21:20 | Renamed to RV8-Bus: lives on Trainer/Computer, CPU plugs in as card |
+| 21:39 | Computer: analog joystick (X/Y + 4 buttons + 4-bit LED output) |
+| 21:48 | Generated CPU netlists: Verilog, JSON, EDIF, BLIF, SPICE |

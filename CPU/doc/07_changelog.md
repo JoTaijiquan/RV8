@@ -1,12 +1,14 @@
 # RV8 Changelog
 
-## v1.4 — 2026-05-12 21:20
+## v1.4 — 2026-05-12 21:48
 - RV8-Bus: 40-pin universal backplane on Trainer/Computer boards
 - CPU board plugs into RV8-Bus as a card (not the host)
 - 255 devices, device detection (ID register), replaceable ROM
 - Pin 31 = CART_DETECT for hot-swap ROM cartridges
 - Project reorganized: CPU/, Trainer/, Computer/, Rom/ with own requirements
-- Full system spec: Trainer (LCD, keypad, sound), PC (video, keyboard, gamepads)
+- Full system spec: Trainer (LCD, keypad, sound), PC (video, keyboard, joysticks)
+- Computer: analog joystick ports (X/Y + 4 buttons + 4-bit LED output per port)
+- CPU netlists generated: Verilog, JSON, EDIF, BLIF, SPICE
 - Rom/ project: BASIC interpreter + monitor + assembler requirements
 
 ## v1.3 — 2026-05-12 19:20
