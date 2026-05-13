@@ -13,7 +13,7 @@ A minimal 8-bit CPU built from 23 chips on 3 breadboards. Harvard variant of RV8
 | Data bus | 8-bit |
 | Code space | 32KB (ROM, internal fetch) |
 | Data space | 32KB RAM (paged: 128 pages × 256 bytes) |
-| Instructions | 60 (fixed 2-byte, direct-encoded) |
+| Instructions | ~67 (fixed 2-byte, direct-encoded) |
 | Registers | 4: a0, t0, sp, pg (+constant generator) |
 | Flags | Z, C, N + IE |
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
@@ -56,7 +56,7 @@ A minimal 8-bit CPU built from 23 chips on 3 breadboards. Harvard variant of RV8
 ## Key Files
 
 ```
-rv808_cpu.v            — Verilog behavioral model (40 tests pass)
+rv808_cpu.v            — Verilog behavioral model (44 tests pass)
 tb/tb_rv808_cpu.v      — Testbench
 doc/                   — All documentation
 ```
@@ -64,7 +64,7 @@ doc/                   — All documentation
 ## Status
 
 - ✅ Architecture design (23 chips, 60 instructions)
-- ✅ Verilog model (40/40 tests pass)
+- ✅ Verilog model (44/44 tests pass)
 - ✅ Circuit diagram (pin-level, 23 chips)
 - ✅ Build guide (8 labs, Thai+English, pin wiring tables)
 - ⬜ Assembler (rv808asm.py)

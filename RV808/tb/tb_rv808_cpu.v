@@ -518,6 +518,42 @@ initial begin
     run(50);
     check(uut.a0, 8'h03, "BRA backward loop");
 
+    // ===== TEST: MOV t0, a0 =====
+    load_program; rst_n=0; #20 rst_n=1;
+    rom[0] = LI_A0;  rom[1] = 8'h55;
+    rom[2] = 8'hB4;  rom[3] = 8'h00;  // MOV t0←a0: unit5, op[4]=1, dst=01, src=00 = 10100 + 0100 = B4
+    rom[4] = HLT;    rom[5] = 8'h00;
+    run(15);
+    check(uut.t0, 8'h55, "MOV t0, a0");
+
+    // ===== TEST: MOV a0, t0 =====
+    load_program; rst_n=0; #20 rst_n=1;
+    rom[0] = LI_T0;  rom[1] = 8'hCC;
+    rom[2] = 8'hB1;  rom[3] = 8'h00;  // MOV a0←t0: unit5, op[4]=1, dst=00, src=01 = 10100 + 0001 = B1
+    rom[4] = HLT;    rom[5] = 8'h00;
+    run(15);
+    check(uut.a0, 8'hCC, "MOV a0, t0");
+
+    // ===== TEST: MOV sp, a0 =====
+    load_program; rst_n=0; #20 rst_n=1;
+    rom[0] = LI_A0;  rom[1] = 8'hFE;
+    rom[2] = 8'hB8;  rom[3] = 8'h00;  // MOV sp←a0: unit5, op[4]=1, dst=10, src=00 = 10100 + 1000 = B8
+    rom[4] = HLT;    rom[5] = 8'h00;
+    run(15);
+    check(uut.sp, 8'hFE, "MOV sp, a0");
+
+    // ===== TEST: JMP pg:imm =====
+    load_program; rst_n=0; #20 rst_n=1;
+    rom[0] = PAGE;   rom[1] = 8'h00;
+    rom[2] = 8'hCC;  rom[3] = 8'h20;  // JMP pg:$20 → jump to $0020. Unit6 op=110 = C0+6=C6
+    rom[4] = LI_A0;  rom[5] = 8'hFF;  // should be skipped
+    rom[6] = HLT;    rom[7] = 8'h00;
+    // at $0020:
+    rom[32] = LI_A0; rom[33] = 8'h88;
+    rom[34] = HLT;   rom[35] = 8'h00;
+    run(20);
+    check(uut.a0, 8'h88, "JMP pg:imm");
+
     // ===== RESULTS =====
     $display("");
     $display("========================================");

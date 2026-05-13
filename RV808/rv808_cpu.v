@@ -269,19 +269,59 @@ always @(posedge clk or negedge rst_n) begin
                     flag_n <= alu_result[7];
                 end
 
-                // --- Unit 5: Load Immediate ---
+                // --- Unit 5: Load Immediate + MOV ---
                 3'b101: begin
-                    case (op[1:0])
-                        2'd0: begin a0 <= ir_opr; flag_z <= (ir_opr == 8'd0); flag_n <= ir_opr[7]; end
-                        2'd1: begin t0 <= ir_opr; end
-                        2'd2: begin sp <= ir_opr; end
-                        2'd3: begin
-                            pg <= ir_opr;
-                            // Also pulse pg_wr for external page latch
-                            dout <= ir_opr;
-                            dpgwr <= 1'b1;
-                        end
-                    endcase
+                    if (!op[4]) begin
+                        // LI: op[4]=0, op[1:0]=reg select
+                        case (op[1:0])
+                            2'd0: begin a0 <= ir_opr; flag_z <= (ir_opr == 8'd0); flag_n <= ir_opr[7]; end
+                            2'd1: begin t0 <= ir_opr; end
+                            2'd2: begin sp <= ir_opr; end
+                            2'd3: begin
+                                pg <= ir_opr;
+                                dout <= ir_opr;
+                                dpgwr <= 1'b1;
+                            end
+                        endcase
+                    end else begin
+                        // MOV: op[4]=1, op[3:2]=dst, op[1:0]=src
+                        // src: 0=a0, 1=t0, 2=sp, 3=pg
+                        case (op[3:2])
+                            2'd0: begin // dst = a0
+                                case (op[1:0])
+                                    2'd1: a0 <= t0;
+                                    2'd2: a0 <= sp;
+                                    2'd3: a0 <= pg;
+                                    default: ;
+                                endcase
+                                flag_z <= (a0 == 8'd0); // will use new value next cycle
+                            end
+                            2'd1: begin // dst = t0
+                                case (op[1:0])
+                                    2'd0: t0 <= a0;
+                                    2'd2: t0 <= sp;
+                                    2'd3: t0 <= pg;
+                                    default: ;
+                                endcase
+                            end
+                            2'd2: begin // dst = sp
+                                case (op[1:0])
+                                    2'd0: sp <= a0;
+                                    2'd1: sp <= t0;
+                                    2'd3: sp <= pg;
+                                    default: ;
+                                endcase
+                            end
+                            2'd3: begin // dst = pg
+                                case (op[1:0])
+                                    2'd0: begin pg <= a0; dout <= a0; dpgwr <= 1'b1; end
+                                    2'd1: begin pg <= t0; dout <= t0; dpgwr <= 1'b1; end
+                                    2'd2: begin pg <= sp; dout <= sp; dpgwr <= 1'b1; end
+                                    default: ;
+                                endcase
+                            end
+                        endcase
+                    end
                 end
 
                 // --- Unit 6: Stack/Jump ---
@@ -322,6 +362,9 @@ always @(posedge clk or negedge rst_n) begin
                             drd <= 1'b1;
                             sub_state <= 3'd3; // go to PCL pop
                             state <= S_S2;
+                        end
+                        3'd6: begin // JMP pg:imm — direct jump, no push
+                            pc <= {pg, ir_opr};
                         end
                         default: ;
                     endcase

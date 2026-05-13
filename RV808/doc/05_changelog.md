@@ -1,5 +1,11 @@
 # RV808 Changelog
 
+## v0.3 — 2026-05-13 21:36
+- Added MOV instructions (12 variants: any register to any register)
+- Added JMP pg:imm (direct jump without push, 0 extra hardware)
+- ISA expanded from 60 to ~67 instructions
+- Testbench expanded to 44/44 pass
+
 ## v0.2 — 2026-05-13 21:00
 - Expanded build guide: full Thai version with pin-level wiring tables for all 8 labs
 - Added chip pinout diagrams (74HC161, 574, 283, 86, 138, 74, 08, 32, 245, ROM, RAM)
