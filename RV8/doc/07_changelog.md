@@ -1,5 +1,16 @@
 # RV8 Changelog
 
+## v1.8 — 2026-05-14 00:37
+- Programmer board complete: ESP32 NodeMCU + 3× TXB0108 level shifters (~$10)
+- ESP32 firmware: PROG mode (flash ROM) + RUN mode (UART terminal bridge)
+- PC tools: rv8flash.py (hardware flash) + rv8term.py (terminal)
+- Bootloader.asm preserved as alternative (software flash via serial)
+- Moved rv8_uart.v to RV8/rtl/ (CPU I/O module, not programmer)
+- Merged old RV8/programmer/ into top-level Programmer/
+- Added SYNC pin (pin 37) to 40-pin bus
+- Confirmed Programmer works with all variants (RV8, RV801, RV808)
+- Created 5 specialized agents: lead, rtl, docs, hw, sw
+
 ## v1.7 — 2026-05-13 11:15
 - Board redesign: CPU board reduced from 27 to 26 chips
 - Removed U25 (clock mux) from CPU board — single-step moved to Trainer board

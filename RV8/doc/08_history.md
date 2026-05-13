@@ -133,3 +133,7 @@
 | 10:55 | Updated README.md for 4-board system |
 | 11:01 | Updated 01_requirements.md + 03_architecture.md (2× 74HC138, ~720 gates) |
 | 11:10 | Fixed block diagram in 05_circuit.md (removed +STEP from clock box) |
+| 21:30 | Added SYNC pin (pin 37) to 40-pin bus for instruction-level step |
+| 00:16 | Programmer board: ESP32 NodeMCU + TXB0108 level shifters design |
+| 00:29 | Programmer board complete: schematic, firmware, PC tools, Thai docs |
+| 00:35 | Merged old RV8/programmer/ into Programmer/, moved rv8_uart.v to RV8/rtl/ |

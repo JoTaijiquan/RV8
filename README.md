@@ -85,7 +85,7 @@ python3 RV8/tools/rv8asm.py RV8/programs/fib.asm -f bin -o fib.bin
 | RV808 CPU (23 chips) | ✅ Designed + simulated |
 | RV801-A (8 chips) | 🔧 Spec done |
 | RV801-B (9 chips) | 🔧 Spec done |
-| Programmer board | 🔧 Design done |
+| Programmer board | ✅ Complete (ESP32 + level shifters) |
 | Trainer board | 🔧 Design done |
 | Full PC board | ⬜ Planned |
 | System ROM (BASIC) | ⬜ Planned |

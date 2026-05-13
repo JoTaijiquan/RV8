@@ -56,9 +56,14 @@ RV8 is a family of minimal 8-bit CPUs built from 74HC logic chips on breadboards
 | Board | Function | Status |
 |-------|----------|:------:|
 | CPU board | The computer (self-contained, crystal on-board) | ✅ |
-| Programmer | ESP32, PROG/RUN switch, ROM flash + UART terminal | Design done |
+| Programmer | ESP32 NodeMCU + TXB0108 level shifters, PROG/RUN switch | ✅ Complete |
 | Trainer | Clock override, STEP (via SYNC pin), LEDs, 7-seg, SD, keyboard, PS/2 | Design done |
 | PC Board | Expanded I/O, SD, UART, GPIO | Planned |
+
+**Programmer board**: ESP32 ←USB→ PC | ESP32 ←TXB0108→ 40-pin bus → CPU board (~$10)
+- PROG mode: hold /RST, flash ROM via address+data lines
+- RUN mode: UART bridge via slot I/O (CPU ↔ ESP32 ↔ PC terminal)
+- Two flash methods: hardware (ESP32 drives ROM) or software (bootloader self-programs)
 
 **40-pin bus** shared by all variants. Pin 37 = SYNC (instruction start pulse).
 **Programmer board** works with all CPU variants (RV8, RV801, RV808).
@@ -93,11 +98,18 @@ RV8 is a family of minimal 8-bit CPUs built from 74HC logic chips on breadboards
 ├── RV808/          23-chip Harvard CPU (complete)
 │   ├── rv808_cpu.v Verilog model
 │   ├── tb/         Testbench (44/44)
-│   └── doc/        8 labs + 6 doc files
+│   └── doc/        8 labs + 7 doc files
+├── Programmer/     ESP32 programmer board (complete)
+│   ├── README.md   Design doc (English + Thai)
+│   ├── schematic.md GPIO mapping + wiring
+│   ├── firmware/   ESP32 .ino + bootloader.asm
+│   └── tools/      rv8flash.py, rv8term.py, rv8upload_serial.py
 ├── Trainer/        Trainer board design
 ├── Computer/       PC board design
 ├── Rom/            System ROM (BASIC) — planned
 ├── Reference/      Study designs (6502, RISC-V)
+├── .kiro/agents/   5 specialized agents (lead, rtl, docs, hw, sw)
+├── rv8_memory.md   This file (session memory)
 └── README.md       Family comparison + quick start
 ```
 
@@ -109,7 +121,7 @@ RV8 is a family of minimal 8-bit CPUs built from 74HC logic chips on breadboards
 - Day 2: KiCad schematic, netlist, simulation
 - Day 3: Verilog CPU (rv8_cpu.v), all 69 tests pass
 - Day 4: 12 labs, Thai versions, build guide, pin wiring tables
-- Day 5: Board redesign (26→26 chips, 4-board system), RV808 design (23 chips, Harvard, 44/44 tests), MOV+JMP added, full docs
+- Day 5: Board redesign (26 chips, 4-board system), RV808 design (23 chips, Harvard, 44/44 tests), MOV+JMP added, full docs, Programmer board complete (ESP32 + level shifters + firmware + PC tools + Thai docs), 5 specialized agents created
 
 ---
 
