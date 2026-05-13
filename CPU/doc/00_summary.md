@@ -4,7 +4,7 @@
 
 ## What Is RV8?
 
-A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed for students to build, understand, and program.
+A minimal 8-bit CPU built from 26 discrete chips on breadboards. Designed for students to build, understand, and program.
 
 ## Specs
 
@@ -17,23 +17,27 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 | Flags | Z, C, N + IE |
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
 | CPU chips | 23 (74HC series) |
-| System total | 27 chips (+ ROM + RAM + decode + clock) |
+| CPU board total | 26 chips (23 CPU + NMI latch + ROM + RAM) |
 | Control | Hardwired FSM, no microcode |
 | Power | 5V USB, <1.3W |
 
-## Architecture
+## System Architecture (4 boards)
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  CPU BOARD (27 chips, plugs into RV8-Bus)         │
+│  CPU BOARD (26 chips, self-contained)             │
+│  Crystal on-board, always runs                    │
 │  PC → ROM → IR → Control → ALU → Registers      │
-└────────────────────┬─────────────────────────────┘
-                     │ RV8-Bus (40-pin)
-                     ▼
-┌──────────────────────────────────────────────────┐
-│  TRAINER BOARD (ESP32 + 8 chips)                 │
-│  USB-serial, ROM programming, LEDs, switches     │
-└──────────────────────────────────────────────────┘
+└────────────────────────┬─────────────────────────┘
+                         │ RV8-Bus (40-pin)
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│  PROGRAMMER  │ │   TRAINER    │ │  PC BOARD    │
+│  ESP32       │ │  Clock ovr.  │ │  SD, UART    │
+│  ROM flash   │ │  Step/LEDs   │ │  GPIO        │
+│  UART term   │ │  SBC style   │ │  Full system │
+└──────────────┘ └──────────────┘ └──────────────┘
 ```
 
 ## Documents (reading order)
@@ -45,7 +49,7 @@ A minimal 8-bit CPU built from 27 discrete 74HC chips on breadboards. Designed f
 | 02 | isa_design.md | ISA design decisions |
 | 03 | architecture.md | Datapath, FSM, timing (17 states) |
 | 04 | isa_reference.md | All 68 instructions (source of truth) |
-| 05 | circuit.md | 27 chips, pin-level connections |
+| 05 | circuit.md | 26 chips, pin-level connections |
 | 06 | build_guide.md | 12-step module-by-module build |
 | 07 | changelog.md | Version history |
 | 08 | history.md | Detailed development timeline |
@@ -65,10 +69,11 @@ tools/rv8asm.py        — Cross-assembler
 
 - ✅ ISA design complete (68 instructions)
 - ✅ Verilog verified (69 tests pass)
-- ✅ Circuit designed (27 chips)
+- ✅ Circuit designed (26 chips, 4-board system)
 - ✅ KiCad schematic (364 nets connected)
 - ✅ Lab sheets (12 labs, full ISA coverage, Thai+English)
 - ✅ Build guide with pin-by-pin wiring tables
 - ⬜ Breadboard build
 - ⬜ PCB layout
-- ⬜ Trainer board build
+- ⬜ Programmer board
+- ⬜ Trainer board

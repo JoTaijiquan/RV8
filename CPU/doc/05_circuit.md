@@ -2,7 +2,7 @@
 
 **Minimal 8-bit CPU — Accumulator-based, RISC-inspired**
 
-**23 CPU chips + 4 system chips = 27 total**
+**23 CPU chips + 3 system chips = 26 total (NMI latch + ROM + RAM)**
 
 ---
 
@@ -232,22 +232,16 @@ U23: 74HC32 (quad OR)
 ## 4. Clock Circuit
 
 ```
-                 3.5MHz
-                Crystal Osc
+        3.5 MHz (breadboard) / 10 MHz (PCB)
+              Crystal Oscillator
                     │
-        ┌───────────┤
-        │           │
-   ┌────┴────┐  ┌──┴──┐
-   │ RUN/STEP│  │     │
-   │ Switch  │  │ 74HC│    ┌──────────┐
-   │    ○────┼──┤ 157 ├────┤ CPU CLK  │
-   │         │  │ MUX │    └──────────┘
-   │  STEP   │  │     │
-   │ Button──┼──┤     │
-   │(debounce)  └─────┘
-   └─────────┘
-   
-Debounce: 74HC00 SR latch + 10K + 100nF
+                    ▼
+              ┌──────────┐
+              │  CPU CLK │ → all sequential chips
+              └──────────┘
+
+Single-step is provided by the Trainer board (clock override via bus).
+CPU board always runs at crystal speed.
 ```
 
 ---
@@ -289,7 +283,7 @@ USB 5V ──►[1N5817]──►[100µF]──┬──► +5V rail
 | 74HC574 ×6 | 20 | DIP-20 |
 | 74HC283 ×2 | 16 | DIP-16 |
 | 74HC86 ×1 | 14 | DIP-14 |
-| 74HC157 ×3 | 16 | DIP-16 |
+| 74HC157 ×2 | 16 | DIP-16 |
 | 74HC138 ×2 | 16 | DIP-16 |
 | 74HC245 ×1 | 20 | DIP-20 |
 | 74HC74 ×2 | 14 | DIP-14 |
@@ -297,7 +291,7 @@ USB 5V ──►[1N5817]──►[100µF]──┬──► +5V rail
 | 74HC32 ×1 | 14 | DIP-14 |
 | AT28C256 ×1 | 28 | DIP-28 |
 | 62256 ×1 | 28 | DIP-28 |
-| **Total: 27 chips** | | |
+| **Total: 26 chips** | | |
 
 ---
 
@@ -307,7 +301,7 @@ USB 5V ──►[1N5817]──►[100µF]──┬──► +5V rail
 Breadboard 1: PC (U1-U4) + Address Mux (U16-U17) + Decode (U18,U24)
 Breadboard 2: Registers (U7-U12) + ALU (U13-U15)
 Breadboard 3: IR (U5-U6) + Control (U20-U23) + Bus Buffer (U19)
-Breadboard 4: ROM + RAM + Clock + Power
+Breadboard 4: ROM + RAM + Crystal Oscillator + Power
 ```
 
 4 breadboards, ~$20 in boards. Connect with ribbon cable for address/data buses.
@@ -318,7 +312,7 @@ Breadboard 4: ROM + RAM + Clock + Power
 
 ---
 
-# รายชื่อชิปทั้งหมด 27 ตัว
+# รายชื่อชิปทั้งหมด 26 ตัว
 
 | U# | เบอร์ | ชื่อเต็ม | ขา | หน้าที่ |
 |:--:|-------|---------|:--:|---------|
@@ -345,8 +339,7 @@ Breadboard 4: ROM + RAM + Clock + Power
 | U21 | 74HC74 | Dual D-Type Flip-Flop | 14 | Flag N + state |
 | U22 | 74HC08 | Quad 2-Input AND Gate | 14 | Control: clock gating |
 | U23 | 74HC32 | Quad 2-Input OR Gate | 14 | Control: signal combining |
-| U24 | 74HC74 | Dual D-Type Flip-Flop | 14 | NMI edge detect + toggle |
-| U25 | 74HC157 | Quad 2-Input Multiplexer | 16 | Clock mux (RUN/STEP) |
+| U24 | 74HC138 | 3-to-8 Line Decoder/Demux | 16 | Address decode |
 | — | AT28C256 | 32K×8 Electrically Erasable PROM | 28 | Program ROM |
 | — | 62256 | 32K×8 Static RAM | 28 | Data RAM |
 
@@ -417,7 +410,7 @@ Breadboard 4: ROM + RAM + Clock + Power
         └───────┘
 ```
 
-## 74HC157 (U16–U17, U25) — DIP-16
+## 74HC157 (U16–U17) — DIP-16
 
 ```
         ┌───╥───┐
@@ -464,7 +457,7 @@ Breadboard 4: ROM + RAM + Clock + Power
         └───────┘
 ```
 
-## 74HC74 (U20–U21, U24) — DIP-14
+## 74HC74 (U20–U21) — DIP-14
 
 ```
         ┌───╥───┐
@@ -567,8 +560,7 @@ Breadboard 4: ROM + RAM + Clock + Power
 | U20–U21 (74HC74) | 14 | 7 |
 | U22 (74HC08) | 14 | 7 |
 | U23 (74HC32) | 14 | 7 |
-| U24 (74HC74) | 14 | 7 |
-| U25 (74HC157) | 16 | 8 |
+| U24 (74HC138) | 16 | 8 |
 | ROM (AT28C256) | 28 | 14 |
 | RAM (62256) | 28 | 14 |
 

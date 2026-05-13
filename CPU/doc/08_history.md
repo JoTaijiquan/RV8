@@ -112,3 +112,20 @@
 | 01:22 | Rewrote 06_build_guide.md for 12-lab structure |
 | 01:26 | Added Thai build guide with pin-by-pin wiring tables |
 | 01:31 | Added full TTL names to chip list (U1–U25) |
+
+## 2026-05-13 (Day 5) — Board Redesign
+
+| Time | Event |
+|------|-------|
+| 02:00 | Pushed v1.6 to GitHub (69/69 tests, 12 labs, Thai versions) |
+| 09:52 | Board architecture redesign discussion |
+| — | Decision: move clock mux (U25) off CPU board → Trainer board |
+| — | Decision: CPU board = 26 chips (23 CPU + U24 addr decode + ROM + RAM) |
+| — | Decision: crystal oscillator on CPU board, always free-running |
+| — | Decision: single-step is Trainer board feature (with visual feedback) |
+| — | Decision: 4-board system: CPU, Programmer, Trainer, PC Board |
+| — | Programmer board: ESP32, PROG/RUN switch, ROM flash + UART terminal |
+| — | Trainer board: clock override, RUN/STEP, LEDs, 7-seg, SD, mini keyboard, PS/2 |
+| — | PC Board: expanded I/O, SD, UART, GPIO, banked RAM |
+| — | U24 confirmed as 74HC138 (address decode), not 74HC74 |
+| 10:47 | Updated all docs to reflect 26-chip, 4-board design |
