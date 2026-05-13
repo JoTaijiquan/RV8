@@ -30,6 +30,7 @@ Build real computers from 74HC chips on breadboards.
 ```
 RV8/
 ├── RV8/            ← RV8 CPU (26 chips, parallel) — DONE
+├── RV801/          ← RV801 CPU (8-9 chips, bit-serial) — spec done
 ├── RV808/          ← RV808 CPU (23 chips, Harvard) — DONE
 ├── Trainer/        ← Trainer board (SBC style) — planned
 ├── Computer/       ← Full PC board — planned
@@ -38,7 +39,7 @@ RV8/
 └── README.md
 ```
 
-Note: RV801-A/B specs are in `RV8/rv801/`.
+Note: RV801-A/B specs are in `RV801/`.
 
 ## Quick Start
 
@@ -74,7 +75,7 @@ python3 RV8/tools/rv8asm.py RV8/programs/fib.asm -f bin -o fib.bin
 |---------|:----:|:-------:|:-----:|
 | RV8 | `RV8/doc/` (12 labs, Thai+English) | ✅ 69/69 pass | ✅ |
 | RV808 | `RV808/doc/` (8 labs, Thai+English) | ✅ 40/40 pass | ✅ |
-| RV801 | `RV8/rv801/` (spec + circuit) | ⬜ | ⬜ |
+| RV801 | `RV801/` (spec + circuit) | ⬜ | ⬜ |
 
 ## Status
 
