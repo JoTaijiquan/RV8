@@ -204,13 +204,33 @@ Wire: TXB0108 VA = 3.3V (ESP32 side), VB = 5V (bus side), GND shared.
 
 ## PC Software
 
+### Workflow (assemble → flash → run → interact)
+
+```bash
+# 1. Write your program
+vim hello.asm
+
+# 2. Assemble to binary
+python3 RV8/tools/rv8asm.py hello.asm -f bin -o hello.bin
+
+# 3. Flip switch to PROG → flash ROM
+python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 hello.bin
+# Output: "Flashing 128 bytes... OK"
+
+# 4. Flip switch to RUN → CPU boots, open terminal
+python3 Programmer/tools/rv8term.py /dev/ttyUSB0
+# Output: "Hello World!"
+# Type to send input to CPU. Ctrl+C to exit.
+```
+
+### Commands
+
 ```bash
 # Flash ROM
-python3 rv8flash.py /dev/ttyUSB0 program.bin
+python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 program.bin
 
-# Terminal mode
-python3 rv8term.py /dev/ttyUSB0
-# or just: screen /dev/ttyUSB0 115200
+# Terminal mode (or just use: screen /dev/ttyUSB0 115200)
+python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 ```
 
 ---
