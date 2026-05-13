@@ -168,15 +168,37 @@ RV808 ROM is wired directly to PC (internal, not on bus). For ROM programming:
 
 ---
 
+## Voltage Level Shifting (CRITICAL)
+
+ESP32 is **3.3V**. The RV8-Bus is **5V** (74HC logic). Direct connection will damage the ESP32.
+
+**Solution**: TXB0108 bidirectional level shifter modules (8-channel, ~$1 each):
+
+```
+ESP32 (3.3V) ←→ [TXB0108 ×3] ←→ 40-pin bus (5V)
+                 level shifters
+```
+
+| Module | Channels | Signals |
+|:------:|:--------:|---------|
+| TXB0108 #1 | 8 | D[7:0] — bidirectional |
+| TXB0108 #2 | 8 | A[7:0] — output (PROG mode) |
+| TXB0108 #3 | 4+ | /RST, /WR, /RD, /SLOT1, SYNC |
+
+Wire: TXB0108 VA = 3.3V (ESP32 side), VB = 5V (bus side), GND shared.
+
+---
+
 ## Parts List
 
 | Part | Qty | Cost |
 |------|:---:|:----:|
 | ESP32 NodeMCU (30-pin) | 1 | ~$4 |
+| TXB0108 level shifter module (8-ch) | 3 | ~$3 |
 | 40-pin IDC connector + ribbon | 1 | ~$2 |
 | SPDT toggle switch (PROG/RUN) | 1 | ~$0.50 |
-| 74HC595 (shift register, optional) | 1 | ~$0.30 |
-| **Total** | | **~$7** |
+| 74HC595 (shift register, for A8-A14) | 1 | ~$0.30 |
+| **Total** | | **~$10** |
 
 ---
 
