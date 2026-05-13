@@ -4,20 +4,20 @@
 
 | # | Goal |
 |---|------|
-| G1 | Minimum chip count (27 total) for educational build |
+| G1 | Minimum chip count (26 total) for educational build |
 | G2 | Fixed 2-byte instruction format (uniform fetch) |
 | G3 | 16-bit address bus (64KB) |
 | G4 | 8-bit data bus |
 | G5 | Accumulator architecture (all ALU → a0) |
 | G6 | Buildable on breadboard with 74HC chips |
-| G7 | Single-step debugging (RUN/STEP switch) |
+| G7 | Single-step debugging (via Trainer board clock override) |
 | G8 | Capable of running BASIC interpreter |
 
 ## Constraints
 
 | Constraint | Value | Reason |
 |-----------|-------|--------|
-| Max chips | 27 | Fits 4 breadboards |
+| Max chips | 26 | Fits 4 breadboards |
 | Supply | 5V USB | 74HC + AT28C256 + 62256 all 5V |
 | Clock | 3.5 MHz | Safe for breadboard wiring |
 | ROM | 32KB (AT28C256) | Program storage, $C000-$FFFF |
@@ -77,24 +77,22 @@ $FFFE-$FFFF  IRQ vector
 
 ```
 ┌──────────────────────────────────────────────┐
-│  CPU Board (27 chips)                        │
-│  (plugs into RV8-Bus on Trainer/Computer)    │
+│  CPU Board (26 chips, self-contained)        │
+│  Crystal on-board, always free-running       │
 └───────────────┬──────────────────────────────┘
                 │ RV8-Bus (40-pin)
     ┌───────────┼───────────┐
     ▼           ▼           ▼
-Trainer/    Computer/     Cartridges
-(~10 chips)  (~17 chips)  (ROM, RAM, I/O)
+Programmer  Trainer/     Computer/
+(ROM flash  (~10 chips)  (full PC)
+ + UART)
 ```
 
-The RV8-Bus is on the Trainer/Computer boards (motherboards).
-The CPU board plugs into the RV8-Bus as a card, alongside:
-- ROM cartridges, RAM expansion, I/O cards
-- Up to 255 devices via I/O space ($8000-$80FF)
-- Device detection: read ID register ($00 = empty)
-- Replaceable ROM: cartridge overrides on-board ROM
-
-See `Computer/doc/requirements.md` for full RV8-Bus specification.
+The CPU board runs standalone with its own clock.
+Host boards (Programmer, Trainer, Computer) plug into the RV8-Bus:
+- Programmer: ROM flash + UART terminal (minimum viable host)
+- Trainer: clock override, step, LEDs, 7-seg, SD, keyboard, PS/2
+- Computer: expanded I/O, storage, OS-capable
 
 ## CPU Board Status
 
@@ -102,10 +100,10 @@ See `Computer/doc/requirements.md` for full RV8-Bus specification.
 |-----------|:------:|
 | ISA design (68 instructions) | ✅ |
 | Verilog (69 tests pass) | ✅ |
-| Circuit design (27 chips) | ✅ |
+| Circuit design (26 chips) | ✅ |
 | KiCad schematic (387 wires) | ✅ |
-| Simulation (8 labs pass) | ✅ |
-| Lab sheets + build guide | ✅ |
+| Lab sheets (12 labs, Thai+English) | ✅ |
+| Build guide + pin wiring tables | ✅ |
 | Cross-assembler | ✅ |
 | Breadboard build | ⬜ |
 | PCB layout | ⬜ |

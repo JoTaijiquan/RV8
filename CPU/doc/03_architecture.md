@@ -107,10 +107,11 @@ Register → data bus → memory (for stores)
 | 13-14 | 74HC283 ×2 | ALU 8-bit adder | All |
 | 15 | 74HC86 | ALU XOR (SUB invert + XOR op) | All |
 | 16-17 | 74HC157 ×2 | Address mux low + high byte | All |
-| 18 | 74HC138 | Address decode + unit select | All |
+| 18 | 74HC138 | Instruction unit decode | All |
 | 19 | 74HC245 | Data bus buffer (bidirectional) | All |
-| 20-21 | 74HC74 ×2 | Flags (Z,C,N,IE) + state + skip + NMI | All |
+| 20-21 | 74HC74 ×2 | Flags (Z,C,N,IE) + state + skip | All |
 | 22-23 | 74HC08+32 | AND/OR control logic | Partial |
+| 24 | 74HC138 | Address decode (ROM/RAM/I/O) | All |
 
 ---
 
@@ -193,8 +194,8 @@ Bus:   [op][opr][push_h][push_l][target_op]
 | 2× 74HC283 (ALU adder) | 100 |
 | 1× 74HC86 (XOR) | 30 |
 | 2× 74HC157 (addr mux) | 80 |
-| 1× 74HC138 (decode) | 30 |
+| 2× 74HC138 (decode) | 60 |
 | 1× 74HC245 (bus buf) | 40 |
 | 2× 74HC74 (flags+state) | 50 |
 | 2× 74HC08/32 (logic) | 70 |
-| **Total** | **~730** |
+| **Total** | **~720** |
