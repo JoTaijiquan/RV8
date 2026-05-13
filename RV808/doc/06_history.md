@@ -33,6 +33,9 @@
 | 19:55 | Expanded testbench: 40/40 pass (JAL/RET, TRAP/RTI, NMI, IRQ, loops) |
 | 20:03 | Circuit diagram complete (pin-level, 23 chips) |
 | 20:09 | Build guide (8 labs), changelog, history, summary |
+| 20:15 | Rewrote build guide: full Thai version with pin tables matching RV8 standard |
+| 20:15 | Added pinout diagrams, chip wiring tables, power table, student tips |
+| 21:11 | Updated summary, changelog, history |
 
 ### Key decisions made:
 

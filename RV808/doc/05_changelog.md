@@ -1,6 +1,13 @@
 # RV808 Changelog
 
-## v0.1 — 2026-05-13
+## v0.2 — 2026-05-13 21:00
+- Expanded build guide: full Thai version with pin-level wiring tables for all 8 labs
+- Added chip pinout diagrams (74HC161, 574, 283, 86, 138, 74, 08, 32, 245, ROM, RAM)
+- Added power table (VCC/GND for all 23 chips)
+- Added chip summary table with U-numbers and full TTL names
+- Student tips in Thai (middle-school friendly)
+
+## v0.1 — 2026-05-13 19:30
 - Initial design: Harvard architecture, 23 chips, page:offset data bus
 - Defined ISA: 60 instructions, 2-byte fixed format, 8 units
 - Registers: a0, t0, sp, pg (4 registers + constant generator)

@@ -65,8 +65,8 @@ doc/                   — All documentation
 
 - ✅ Architecture design (23 chips, 60 instructions)
 - ✅ Verilog model (40/40 tests pass)
-- ✅ Circuit diagram (pin-level)
-- ✅ Build guide (8 labs)
+- ✅ Circuit diagram (pin-level, 23 chips)
+- ✅ Build guide (8 labs, Thai+English, pin wiring tables)
 - ⬜ Assembler (rv808asm.py)
 - ⬜ Breadboard build
 - ⬜ PCB layout
