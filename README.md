@@ -6,12 +6,13 @@ Build a real computer from 74HC chips on breadboards.
 
 ```
 RV8/
-├── CPU/            ← CPU board (26 chips) — DONE
+├── RV8/            ← RV8 CPU board (26 chips) — DONE
+├── RV808/          ← RV808 CPU board (23 chips) — design phase
 ├── Trainer/        ← Trainer board (SBC style) — in progress
 ├── Computer/       ← Full PC board — planned
 ├── Rom/            ← System ROM (BASIC + monitor) — planned
 ├── Reference/      ← Study designs (6502, RISC-V)
-└── rv8_cpu.v       ← Main Verilog (top-level)
+└── README.md
 ```
 
 ## CPU Board (26 chips)
@@ -55,13 +56,13 @@ RV8/
 
 ```bash
 # Simulate the CPU
-cd CPU/sim && make all
+cd RV8/sim && make all
 
 # Assemble a program
-python3 CPU/tools/rv8asm.py CPU/programs/fib.asm -f bin -o fib.bin
+python3 RV8/tools/rv8asm.py RV8/programs/fib.asm -f bin -o fib.bin
 
 # View schematic
-xdg-open CPU/doc/diagrams/rv8_cpu_schematic.pdf
+xdg-open RV8/doc/diagrams/rv8_cpu_schematic.pdf
 ```
 
 ## Documentation
@@ -73,13 +74,14 @@ xdg-open CPU/doc/diagrams/rv8_cpu_schematic.pdf
 | 1–8 | Hardware build (clock → control unit) |
 | 9–12 | Full ALU, stack, addressing modes, interrupts |
 
-See `CPU/doc/` for full documentation.
+See `RV8/doc/` for full documentation.
 
 ## Status
 
 | Board | Status | Folder |
 |-------|:------:|--------|
-| CPU (26 chips) | ✅ Designed + simulated | `CPU/` |
+| CPU (26 chips) | ✅ Designed + simulated | `RV8/` |
+| RV808 (23 chips) | 🔧 Design phase | `RV808/` |
 | Programmer | 🔧 Design done | — |
 | Trainer (SBC) | 🔧 Design done | `Trainer/` |
 | Full PC | ⬜ Planned | `Computer/` |
