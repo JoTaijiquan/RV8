@@ -1,6 +1,6 @@
 # RV8 Project — Session Memory
 
-**Last updated**: 2026-05-13 21:42
+**Last updated**: 2026-05-14 00:41
 
 ---
 
@@ -127,10 +127,25 @@ RV8 is a family of minimal 8-bit CPUs built from 74HC logic chips on breadboards
 
 ## Next Steps
 
-- [ ] Build Programmer board (ESP32 + level shifters)
+- [ ] Build Programmer board physically (ESP32 + TXB0108 + 40-pin connector)
 - [ ] Build RV801-B on breadboard (9 chips, quickest physical build)
 - [ ] Write rv808asm.py assembler
 - [ ] Write BASIC interpreter (in ROM)
 - [ ] RV808 PCB design (JLCPCB)
 - [ ] Video card (FPGA or ESP32, text 40×25, HDMI)
 - [ ] Verilog for RV801
+- [ ] Trainer board build (clock override, LEDs, 7-seg, SD, keyboard)
+
+## Agents
+
+5 specialized agents in `.kiro/agents/`:
+
+| Agent | Model | Role |
+|-------|-------|------|
+| lead | (default) | System architect — design decisions, coordination |
+| rtl | qwen3-coder-next | Verilog RTL — CPU logic, testbenches |
+| docs | glm-5 | Documentation — Thai+English labs, pin tables |
+| hw | glm-5 | Hardware — circuits, chips, PCB |
+| sw | qwen3-coder-next | Software — assembler, BASIC, ROM |
+
+Switch with `/agent <name>` or keyboard shortcuts (Ctrl+Shift+0-4).
