@@ -19,7 +19,7 @@ Build real computers from 74HC chips on breadboards.
 | **Breadboards** | 1 | 1 | 4 | 3 |
 | **Cost** | ~$15 | ~$13 | ~$18 | ~$14 |
 | **Build time** | 1-2 weeks | 1-2 weeks | 4-5 weeks | 3-4 weeks |
-| **ISA** | RV8 (68 instr) | RV8 (68 instr) | RV8 (68 instr) | RV808 (60 instr) |
+| **ISA** | RV8 (68 instr) | RV8 (68 instr) | RV8 (68 instr) | RV808 (67 instr) |
 | **Software compat** | 100% RV8 | 100% RV8 | — | ~85% RV8 |
 | **Run BASIC** | ⚠️ Slow | ⚠️ Slow | ✅ | ✅ |
 | **Play games** | Simple only | Simple only | ✅ | ✅ |
@@ -74,7 +74,7 @@ python3 RV8/tools/rv8asm.py RV8/programs/fib.asm -f bin -o fib.bin
 | Variant | Docs | Verilog | Tests |
 |---------|:----:|:-------:|:-----:|
 | RV8 | `RV8/doc/` (12 labs, Thai+English) | ✅ 69/69 pass | ✅ |
-| RV808 | `RV808/doc/` (8 labs, Thai+English) | ✅ 40/40 pass | ✅ |
+| RV808 | `RV808/doc/` (8 labs, Thai+English) | ✅ 44/44 pass | ✅ |
 | RV801 | `RV801/` (spec + circuit) | ⬜ | ⬜ |
 
 ## Status

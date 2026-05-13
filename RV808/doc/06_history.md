@@ -38,6 +38,9 @@
 | 21:11 | Updated summary, changelog, history |
 | 21:25 | Added SYNC pin (pin 37) to 40-pin bus — Trainer uses it for instruction-level step |
 | 21:30 | Confirmed: Programmer board works with all variants (RV8, RV801, RV808) |
+| 21:36 | Added MOV (12 variants) + JMP pg:imm to ISA — 0 extra hardware |
+| 21:36 | Testbench expanded to 44/44 pass |
+| 21:40 | ISA now ~67 instructions (was 60) |
 
 ### Key decisions made:
 
