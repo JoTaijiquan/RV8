@@ -237,4 +237,4 @@ All **68 instructions** of the RV8 ISA are now operational. Your CPU can:
 - ข้ามคำสั่งแบบมีเงื่อนไข
 - **พร้อมรัน BASIC interpreter!**
 
-**ชิปทั้งหมด: 27 ตัว** (CPU 23 + ROM + RAM + buffer + decode)
+**ชิปทั้งหมด: 26 ตัว** (CPU 23 + address decode + ROM + RAM)

@@ -59,12 +59,12 @@ gtkwave lab2.vcd
 | Test | Action | Expected Result |
 |:----:|--------|-----------------|
 | 1 | Press RESET | All LEDs off (PC = $0000) |
-| 2 | Single-step 1× | A0 LED on (PC = $0001) |
+| 2 | Single-step 1× (Trainer board) | A0 LED on (PC = $0001) |
 | 3 | Single-step 15× total | A0-A3 all on (PC = $000F) |
 | 4 | Single-step 1 more | A0-A3 off, A4 on (PC = $0010) — carry! |
 | 5 | Single-step to $00FF | All 8 LEDs on |
 | 6 | Single-step 1 more | All off (PC = $0100) — verify U3 increments |
-| 7 | Switch to RUN mode | LEDs blur (counting too fast to see) |
+| 7 | Switch to RUN (release clock override) | LEDs blur (counting too fast to see) |
 | 8 | Press RESET during RUN | All LEDs off immediately |
 
 ## Checkoff

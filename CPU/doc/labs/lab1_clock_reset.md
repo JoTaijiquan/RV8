@@ -1,99 +1,81 @@
 # Lab 1: Clock and Reset Circuit
 
 ## Objective
-Build a controllable clock source and clean reset signal for the RV8 CPU.
+Build a free-running clock source and clean reset signal for the RV8 CPU.
 
 ## Components
 | Part | Qty | Description |
 |------|:---:|-------------|
-| 3.5 MHz crystal oscillator | 1 | Full-can oscillator module |
-| 74HC157 | 1 | Quad 2:1 mux (clock select) |
-| Tactile pushbutton | 2 | STEP and RESET |
-| 10KΩ resistor | 2 | Pull-up / debounce |
-| 100nF capacitor | 2 | Debounce / decoupling |
+| 3.5 MHz crystal oscillator | 1 | Full-can oscillator module (4-pin) |
+| Tactile pushbutton | 1 | RESET |
+| 10KΩ resistor | 1 | Pull-up for /RST |
+| 100nF capacitor | 2 | Debounce + decoupling |
 | LED + 330Ω | 2 | CLK indicator, /RST indicator |
 
 ## Schematic
 
 ```
-         3.5MHz OSC
-            │
-            ├──── 74HC157 pin 2 (1A0) ──── "RUN" input
-            │
-  STEP ─┐   │
-  button─┤   │
-  (debounce) ├── 74HC157 pin 3 (1B0) ──── "STEP" input
-         │   │
-         └───┘
-              │
-  RUN/STEP ───── 74HC157 pin 1 (S) ──── mode select
-  switch
-              │
-              └── 74HC157 pin 4 (1Y0) ──► CLK output
-                                           │
-                                         LED + 330Ω → GND
-
+  3.5MHz OSC module
+  ┌─────────┐
+  │ VCC  OUT├──────────────► CLK rail
+  │         │                  │
+  │ GND  NC │              LED + 330Ω → GND
+  └─────────┘
 
   /RST circuit:
-  VCC ─── 10K ─┬─── /RST output
-               │        │
-  RESET btn ───┘   100nF ─── GND
-  (to GND)
+  VCC ─── 10K ─┬─── /RST output → all /CLR pins
+               │
+  RESET btn ───┘
+  (to GND)     │
+              100nF ─── GND
 ```
 
 ## Simulate First
 
-Before wiring real chips, verify the design in simulation:
-
 ```bash
 cd sim/
 iverilog -o lab1 lab1_clock_tb.v && vvp lab1
-gtkwave lab1.vcd   # view waveform
+gtkwave lab1.vcd
 ```
 
 **What to check in GTKWave:**
 - `osc`: continuous 3.5 MHz square wave
-- `clk`: follows osc in RUN mode, single pulses in STEP mode
 - `rst_n`: goes LOW on reset, returns HIGH cleanly
 
 ---
 
 ## Procedure
 
-1. Insert 74HC157 on breadboard. Connect VCC (pin 16) and GND (pin 8).
-2. Wire crystal oscillator output to 74HC157 input 1A0 (pin 2).
-3. Wire STEP button with debounce (10K pull-up + 100nF to GND) to input 1B0 (pin 3).
-4. Wire RUN/STEP toggle switch to select pin S (pin 1).
-5. Tie /E (pin 15) to GND (always enabled).
-6. Output 1Y0 (pin 4) is your CLK signal. Connect LED + 330Ω for visual.
-7. Build /RST circuit: 10K pull-up to VCC, button to GND, 100nF cap for debounce.
-8. Connect /RST LED (lights when reset is active).
+1. Wire crystal oscillator: VCC to +5V, GND to GND, OUT to CLK rail.
+2. Add 100nF decoupling cap between VCC and GND near the oscillator.
+3. Connect CLK LED + 330Ω from CLK rail to GND (visual indicator).
+4. Build /RST circuit: 10K pull-up to VCC, button to GND, 100nF cap for debounce.
+5. Connect /RST LED + 330Ω (lights when reset is active LOW).
 
 ## Test Procedure
 
 | Test | Action | Expected Result |
 |:----:|--------|-----------------|
-| 1 | Switch to RUN mode | CLK LED appears solid (too fast to see blink) |
-| 2 | Switch to STEP mode | CLK LED is OFF |
-| 3 | Press STEP button | CLK LED blinks once per press |
-| 4 | Probe CLK with scope (RUN) | Clean 3.5 MHz square wave, 50% duty |
-| 5 | Probe CLK with scope (STEP) | Single clean pulse per button press |
-| 6 | Press RESET | /RST LED lights, /RST line goes LOW |
-| 7 | Release RESET | /RST returns HIGH cleanly (no bounce) |
+| 1 | Power on | CLK LED appears solid (too fast to see blink) |
+| 2 | Probe CLK with scope | Clean 3.5 MHz square wave, ~50% duty |
+| 3 | Press RESET | /RST LED lights, /RST line goes LOW |
+| 4 | Release RESET | /RST returns HIGH cleanly (no bounce) |
 
 ## Checkoff
 
-- [ ] CLK output: 3.5 MHz in RUN mode
-- [ ] CLK output: single pulse per press in STEP mode
+- [ ] CLK output: 3.5 MHz square wave (verify with scope or frequency counter)
 - [ ] /RST: clean LOW when pressed, HIGH when released
-- [ ] No ringing or bounce on either signal (verify with scope)
+- [ ] No ringing or bounce on /RST (verify with scope)
 
 ## Notes
 - The CLK LED won't visibly blink at 3.5 MHz — it will appear always-on. This is normal.
-- In STEP mode, you'll use this to manually clock the CPU one cycle at a time for debugging.
-- Keep wires to the oscillator short to avoid noise.
+- Single-step debugging is provided by the Trainer board (not on the CPU board).
+- Keep wires from the oscillator short to avoid noise.
+- The 4-pin oscillator module has: VCC, GND, OUT, NC (no connect).
 
-## Thai Version
+---
+
+# Thai Version
 
 ---
 
@@ -103,7 +85,7 @@ gtkwave lab1.vcd   # view waveform
 
 ## เป้าหมาย
 
-สร้าง "หัวใจ" ของคอมพิวเตอร์ — สัญญาณ Clock ที่เลือกได้ 2 โหมด และปุ่ม Reset
+สร้าง "หัวใจ" ของคอมพิวเตอร์ — สัญญาณ Clock ที่วิ่งตลอดเวลา และปุ่ม Reset
 
 ---
 
@@ -113,9 +95,9 @@ gtkwave lab1.vcd   # view waveform
 
 **Reset (/RST)** = ปุ่มเริ่มใหม่ กดแล้ว CPU กลับไปเริ่มต้น
 
-**RUN mode** = Clock วิ่งเอง 3.5 ล้านครั้ง/วินาที (เร็วมาก)
+Clock บน CPU board วิ่งเองตลอด 3.5 ล้านครั้ง/วินาที (breadboard) หรือ 10 ล้านครั้ง/วินาที (PCB)
 
-**STEP mode** = Clock หยุด กดปุ่มทีละครั้ง (สำหรับดีบัก)
+**Single-step** อยู่บน Trainer board — ไม่ได้อยู่บน CPU board
 
 ---
 
@@ -123,28 +105,24 @@ gtkwave lab1.vcd   # view waveform
 
 | อุปกรณ์ | จำนวน | ทำหน้าที่อะไร |
 |---------|:------:|--------------|
-| Crystal Oscillator 3.5 MHz | 1 | สร้างจังหวะ Clock |
-| 74HC157 | 1 | สวิตช์เลือก RUN/STEP |
-| ปุ่มกด | 2 | STEP กับ RESET |
-| ตัวต้านทาน 10KΩ | 2 | ดึงสัญญาณให้เป็น HIGH |
-| ตัวเก็บประจุ 100nF | 2 | กันปุ่มเด้ง |
-| LED + ตัวต้านทาน 330Ω | 2 | ไฟแสดงสถานะ |
+| Crystal Oscillator 3.5 MHz (4 ขา) | 1 | สร้างจังหวะ Clock |
+| ปุ่มกด | 1 | RESET |
+| ตัวต้านทาน 10KΩ | 1 | ดึงสัญญาณ /RST ให้เป็น HIGH |
+| ตัวเก็บประจุ 100nF | 2 | กันปุ่มเด้ง + decoupling |
+| LED + ตัวต้านทาน 330Ω | 2 | ไฟแสดงสถานะ CLK และ /RST |
 
 ---
 
 ## ผังวงจร
 
 ```
-                         ┌────────────┐
-  Oscillator ──────────► │ pin 2 (A)  │
-                         │            │
-  ปุ่ม STEP ───[10K]──► │ pin 3 (B)  │──► pin 4 (Y) ──► CLK
-         │               │            │
-        100nF            │ pin 1 (S)  │
-         │               └────────────┘
-        GND                    ▲
-                               │
-                        สวิตช์ RUN/STEP
+  Crystal Oscillator (กล่องเหล็ก 4 ขา)
+  ┌─────────┐
+  │ VCC  OUT├──────► CLK rail ──► LED ──[330Ω]──► GND
+  │         │
+  │ GND  NC │
+  └─────────┘
+  (ต่อ 100nF ระหว่าง VCC กับ GND ใกล้ตัว oscillator)
 
 
   วงจร Reset:
@@ -162,15 +140,11 @@ gtkwave lab1.vcd   # view waveform
 
 ## ขั้นตอนต่อวงจร
 
-1. เสียบ 74HC157 ลง breadboard
-2. ต่อไฟเลี้ยง: pin 16 → +5V, pin 8 → GND
-3. ต่อ Oscillator → pin 2
-4. ต่อปุ่ม STEP (ผ่าน 10K pull-up + 100nF กัน bounce) → pin 3
-5. ต่อสวิตช์ RUN/STEP → pin 1
-6. ต่อ pin 15 → GND (เปิดใช้งานชิปตลอด)
-7. pin 4 = CLK output → ต่อ LED + 330Ω
-8. สร้างวงจร Reset ตามผัง
-9. ต่อ LED ที่ /RST
+1. ต่อ Crystal Oscillator: VCC → +5V, GND → GND, OUT → CLK rail
+2. ต่อ 100nF ระหว่าง VCC กับ GND ใกล้ตัว oscillator (decoupling)
+3. ต่อ LED + 330Ω จาก CLK rail ลง GND
+4. สร้างวงจร Reset: 10K pull-up + ปุ่มลง GND + 100nF กัน bounce
+5. ต่อ LED + 330Ω ที่ /RST
 
 ---
 
@@ -178,37 +152,24 @@ gtkwave lab1.vcd   # view waveform
 
 | ขั้น | ทำอะไร | ผลที่ถูกต้อง |
 |:----:|--------|-------------|
-| 1 | เลื่อนสวิตช์ไป RUN | LED CLK ติดค้าง (เร็วเกินจะเห็นกระพริบ) |
-| 2 | เลื่อนสวิตช์ไป STEP | LED CLK ดับ |
-| 3 | กดปุ่ม STEP | LED CLK กระพริบ 1 ครั้งต่อ 1 กด |
-| 4 | กดปุ่ม RESET | LED RST ติด, สาย /RST = 0V |
-| 5 | ปล่อยปุ่ม RESET | LED RST ดับ, สาย /RST = 5V |
+| 1 | เปิดไฟ | LED CLK ติดค้าง (เร็วเกินจะเห็นกระพริบ) |
+| 2 | วัด CLK ด้วย scope | คลื่นสี่เหลี่ยม 3.5 MHz สะอาด |
+| 3 | กดปุ่ม RESET | LED RST ติด, สาย /RST = 0V |
+| 4 | ปล่อยปุ่ม RESET | LED RST ดับ, สาย /RST = 5V สะอาด |
 
 ---
 
 ## เช็คลิสต์ผ่าน
 
-- [ ] RUN mode: LED CLK ติดค้าง (Clock ทำงาน)
-- [ ] STEP mode: กด 1 ครั้ง = กระพริบ 1 ครั้ง
+- [ ] CLK: คลื่นสี่เหลี่ยม 3.5 MHz (วัดด้วย scope)
 - [ ] กด RESET: /RST เป็น LOW
-- [ ] ปล่อย RESET: /RST กลับเป็น HIGH สะอาด
-
----
-
-## จำลองก่อนต่อจริง (ถ้ามีคอมพิวเตอร์)
-
-```bash
-cd sim/
-iverilog -o lab1 lab1_clock_tb.v && vvp lab1
-gtkwave lab1.vcd
-```
-
-ดูคลื่นสัญญาณ: `osc` ต้องเป็นคลื่นสี่เหลี่ยม, `clk` ต้องเลือกตามโหมด, `rst_n` ต้องสะอาด
+- [ ] ปล่อย RESET: /RST กลับเป็น HIGH สะอาด (ไม่เด้ง)
 
 ---
 
 ## หมายเหตุ
 
-- LED ที่ต่อกับ Clock จะดูเหมือนติดตลอดใน RUN mode — เป็นเรื่องปกติ เพราะกระพริบ 3.5 ล้านครั้ง/วินาที ตาเราเห็นไม่ทัน
-- STEP mode ใช้ตอนดีบัก — กดทีละครั้งเพื่อดูว่า CPU ทำอะไรในแต่ละ cycle
+- LED ที่ต่อกับ Clock จะดูเหมือนติดตลอด — เป็นเรื่องปกติ เพราะกระพริบ 3.5 ล้านครั้ง/วินาที
+- ถ้าต้องการ single-step ให้ต่อ Trainer board (จะมีปุ่ม STEP + LED แสดงสถานะ)
 - ต่อสายจาก Oscillator ให้สั้นที่สุด เพื่อลดสัญญาณรบกวน
+- Oscillator 4 ขา: VCC, GND, OUT, NC (ขาที่ 4 ไม่ต้องต่อ)
