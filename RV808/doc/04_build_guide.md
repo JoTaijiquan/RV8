@@ -785,7 +785,8 @@ $0004: E1 00    ; HLT
 | 15-18 | PG[4:7] | U20 ขา 16-19 |
 | 21-28 | A[7:0] | RAM address mux output |
 | 29-36 | D[7:0] | U19 B side (external data) |
-| 37-40 | N/A | ไม่ต่อ (สำรองไว้) |
+| 37 | SYNC | instruction start pulse (จาก control) |
+| 38-40 | N/A | ไม่ต่อ (สำรองไว้) |
 
 ## ทดสอบ
 | ทำอะไร | ผลที่ถูกต้อง |

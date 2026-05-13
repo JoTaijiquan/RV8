@@ -36,6 +36,8 @@
 | 20:15 | Rewrote build guide: full Thai version with pin tables matching RV8 standard |
 | 20:15 | Added pinout diagrams, chip wiring tables, power table, student tips |
 | 21:11 | Updated summary, changelog, history |
+| 21:25 | Added SYNC pin (pin 37) to 40-pin bus — Trainer uses it for instruction-level step |
+| 21:30 | Confirmed: Programmer board works with all variants (RV8, RV801, RV808) |
 
 ### Key decisions made:
 

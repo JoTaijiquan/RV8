@@ -453,7 +453,7 @@ Breadboard 3: ALU (U11-U13) + Control (U14-U18) + Bus Buffer (U19) + Decode (U21
 | 14 | /SLOT4 | 34 | D5 |
 | 15 | PG4 | 35 | D6 |
 | 16 | PG5 | 36 | D7 |
-| 17 | PG6 | 37 | N/A |
+| 17 | PG6 | 37 | SYNC |
 | 18 | PG7 | 38 | N/A |
 | 19 | N/A | 39 | N/A |
 | 20 | N/A | 40 | N/A |

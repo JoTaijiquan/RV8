@@ -8,6 +8,8 @@
 - Defined 4-board system: CPU, Programmer, Trainer, PC Board
 - Programmer board: ESP32, PROG/RUN switch, ROM flash + UART terminal
 - Trainer board: clock override, step button, 6× 7-seg, 23 LEDs, SD, keyboard, PS/2
+- SYNC pin (pin 37) on 40-pin bus — Trainer uses for instruction-level step
+- Programmer board works with all CPU variants (RV8, RV801, RV808)
 - Fixed 03_architecture.md: 2× 74HC138, gate count ~720
 - Rewrote Lab 1 (crystal oscillator only, no 74HC157)
 - Updated all docs: README, requirements, circuit, build guide, labs, history
