@@ -1,6 +1,6 @@
 # RV8 Changelog
 
-## v1.7 — 2026-05-13 10:47
+## v1.7 — 2026-05-13 11:15
 - Board redesign: CPU board reduced from 27 to 26 chips
 - Removed U25 (clock mux) from CPU board — single-step moved to Trainer board
 - CPU board now always free-running (crystal oscillator, no switches)
@@ -8,7 +8,9 @@
 - Defined 4-board system: CPU, Programmer, Trainer, PC Board
 - Programmer board: ESP32, PROG/RUN switch, ROM flash + UART terminal
 - Trainer board: clock override, step button, 6× 7-seg, 23 LEDs, SD, keyboard, PS/2
-- Updated all docs (summary, circuit, build guide, history)
+- Fixed 03_architecture.md: 2× 74HC138, gate count ~720
+- Rewrote Lab 1 (crystal oscillator only, no 74HC157)
+- Updated all docs: README, requirements, circuit, build guide, labs, history
 
 ## v1.6 — 2026-05-13 01:36
 - Expanded from 8 labs to 12 labs — full 68-instruction ISA coverage

@@ -129,3 +129,7 @@
 | — | PC Board: expanded I/O, SD, UART, GPIO, banked RAM |
 | — | U24 confirmed as 74HC138 (address decode), not 74HC74 |
 | 10:47 | Updated all docs to reflect 26-chip, 4-board design |
+| 10:53 | Rewrote Lab 1 (crystal only, no clock mux), fixed Lab 12 chip count |
+| 10:55 | Updated README.md for 4-board system |
+| 11:01 | Updated 01_requirements.md + 03_architecture.md (2× 74HC138, ~720 gates) |
+| 11:10 | Fixed block diagram in 05_circuit.md (removed +STEP from clock box) |
