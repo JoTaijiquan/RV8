@@ -420,6 +420,104 @@ initial begin
     run(25);
     check(uut.a0, 8'hDD, "LB/SB sp+imm");
 
+    // ===== TEST: JAL/RET =====
+    load_program; rst_n=0; #20 rst_n=1;
+    // Main: LI sp,$FF; LI a0,$11; PAGE $00; JAL $20; HLT
+    // Sub at $0020: LI a0,$99; RET
+    rom[0] = LI_SP; rom[1] = 8'hFF;
+    rom[2] = LI_A0; rom[3] = 8'h11;
+    rom[4] = PAGE;  rom[5] = 8'h00;
+    rom[6] = JAL;   rom[7] = 8'h20;  // call {pg=$00, imm=$20} = $0020
+    rom[8] = HLT;   rom[9] = 8'h00;  // return here
+    // Subroutine at $0020:
+    rom[32] = LI_A0; rom[33] = 8'h99;
+    rom[34] = RET;   rom[35] = 8'h00;
+    run(40);
+    check(uut.a0, 8'h99, "JAL/RET: a0 from subroutine");
+    // PC should be at HLT (address $0008), looping
+    check(uut.ir_op, HLT, "JAL/RET: returned to HLT");
+
+    // ===== TEST: TRAP/RTI =====
+    load_program; rst_n=0; #20 rst_n=1;
+    // TRAP vector at $3FF8-$3FF9 → points to handler at $0100
+    rom[16'h3FF8] = 8'h00; // vector low
+    rom[16'h3FF9] = 8'h01; // vector high → $0100
+    // Main:
+    rom[0] = LI_SP; rom[1] = 8'hFF;
+    rom[2] = LI_A0; rom[3] = 8'h55;
+    rom[4] = EI;    rom[5] = 8'h00;
+    rom[6] = TRAP;  rom[7] = 8'h00;
+    rom[8] = HLT;   rom[9] = 8'h00;  // should return here after RTI
+    // Handler at $0100:
+    rom[256] = LI_A0; rom[257] = 8'hEE;
+    rom[258] = RTI;   rom[259] = 8'h00;
+    run(60);
+    check(uut.a0, 8'hEE, "TRAP/RTI: handler set a0");
+
+    // ===== TEST: NMI =====
+    load_program; rst_n=0; #20 rst_n=1;
+    // NMI vector at $3FFA-$3FFB → handler at $0200
+    rom[16'h3FFA] = 8'h00; // vector low
+    rom[16'h3FFB] = 8'h02; // vector high → $0200
+    // Main:
+    rom[0] = LI_SP; rom[1] = 8'hFF;
+    rom[2] = LI_A0; rom[3] = 8'hAA;
+    rom[4] = NOP;   rom[5] = 8'h00;
+    rom[6] = NOP;   rom[7] = 8'h00;
+    rom[8] = HLT;   rom[9] = 8'h00;
+    // NMI handler at $0200:
+    rom[512] = LI_A0; rom[513] = 8'h77;
+    rom[514] = RTI;   rom[515] = 8'h00;
+    // Trigger NMI after a few cycles
+    run(12);
+    nmi_n = 0; #10 nmi_n = 1; // pulse NMI
+    run(50);
+    check(uut.a0, 8'h77, "NMI: handler set a0");
+
+    // ===== TEST: IRQ (masked) =====
+    load_program; rst_n=0; #20 rst_n=1;
+    rom[0] = LI_SP; rom[1] = 8'hFF;
+    rom[2] = LI_A0; rom[3] = 8'h11;
+    rom[4] = DI;    rom[5] = 8'h00;  // interrupts disabled
+    rom[6] = NOP;   rom[7] = 8'h00;
+    rom[8] = HLT;   rom[9] = 8'h00;
+    run(8);
+    irq_n = 0; // assert IRQ (but IE=0, should be ignored)
+    run(20);
+    irq_n = 1;
+    check(uut.a0, 8'h11, "IRQ masked: a0 unchanged");
+
+    // ===== TEST: IRQ (enabled) =====
+    load_program; rst_n=0; #20 rst_n=1;
+    // IRQ vector at $3FFE-$3FFF → handler at $0300
+    rom[16'h3FFE] = 8'h00; // vector low
+    rom[16'h3FFF] = 8'h03; // vector high → $0300
+    rom[0] = LI_SP; rom[1] = 8'hFF;
+    rom[2] = LI_A0; rom[3] = 8'h22;
+    rom[4] = EI;    rom[5] = 8'h00;  // enable interrupts
+    rom[6] = NOP;   rom[7] = 8'h00;
+    rom[8] = NOP;   rom[9] = 8'h00;
+    rom[10]= HLT;   rom[11]= 8'h00;
+    // IRQ handler at $0300:
+    rom[768] = LI_A0; rom[769] = 8'hCC;
+    rom[770] = RTI;   rom[771] = 8'h00;
+    run(12);
+    irq_n = 0; // assert IRQ
+    run(50);
+    irq_n = 1;
+    check(uut.a0, 8'hCC, "IRQ enabled: handler set a0");
+
+    // ===== TEST: BRA (backward) =====
+    load_program; rst_n=0; #20 rst_n=1;
+    // LI a0,0; loop: INC; CMPI 3; BNE loop; HLT
+    rom[0] = LI_A0; rom[1] = 8'h00;
+    rom[2] = INC;   rom[3] = 8'h00;  // a0++
+    rom[4] = CMPI;  rom[5] = 8'h03;  // compare with 3
+    rom[6] = BNE;   rom[7] = 8'hFA;  // -6 (back to INC at offset 2)
+    rom[8] = HLT;   rom[9] = 8'h00;
+    run(50);
+    check(uut.a0, 8'h03, "BRA backward loop");
+
     // ===== RESULTS =====
     $display("");
     $display("========================================");

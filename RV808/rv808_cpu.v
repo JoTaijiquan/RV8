@@ -109,19 +109,8 @@ function [8:0] alu_calc;
 endfunction
 
 // --- NMI edge detect ---
-reg nmi_prev, nmi_pending;
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        nmi_prev <= 1'b1;
-        nmi_pending <= 1'b0;
-    end else begin
-        nmi_prev <= nmi_n;
-        if (nmi_prev && !nmi_n)
-            nmi_pending <= 1'b1;
-        else if (state == S_INT && sub_state == 3'd5)
-            nmi_pending <= 1'b0;
-    end
-end
+reg nmi_prev;
+reg nmi_pending;
 
 // --- Main state machine ---
 reg [7:0] push_data;
@@ -142,7 +131,13 @@ always @(posedge clk or negedge rst_n) begin
         drd <= 1'b0; dwr <= 1'b0; dpgwr <= 1'b0;
         daddr <= 16'd0; dout <= 8'd0;
         doing_int <= 1'b0; int_type <= 2'd0;
+        nmi_prev <= 1'b1; nmi_pending <= 1'b0;
     end else begin
+        // NMI edge detect
+        nmi_prev <= nmi_n;
+        if (nmi_prev && !nmi_n)
+            nmi_pending <= 1'b1;
+
         // defaults
         drd <= 1'b0;
         dwr <= 1'b0;
@@ -245,13 +240,13 @@ always @(posedge clk or negedge rst_n) begin
                 // --- Unit 3: Branch ---
                 3'b011: begin
                     case (op[2:0])
-                        3'd0: if (flag_z)  pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd1: if (!flag_z) pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd2: if (flag_c)  pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd3: if (!flag_c) pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd4: if (flag_n)  pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd5: if (!flag_n) pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2;
-                        3'd6: pc <= pc + {{8{ir_opr[7]}}, ir_opr} - 16'd2; // BRA
+                        3'd0: if (flag_z)  pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd1: if (!flag_z) pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd2: if (flag_c)  pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd3: if (!flag_c) pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd4: if (flag_n)  pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd5: if (!flag_n) pc <= pc + {{8{ir_opr[7]}}, ir_opr};
+                        3'd6: pc <= pc + {{8{ir_opr[7]}}, ir_opr}; // BRA
                         default: ;
                     endcase
                 end
@@ -325,7 +320,7 @@ always @(posedge clk or negedge rst_n) begin
                         3'd5: begin // RET — pop PCL, pop PCH
                             daddr <= {8'h01, sp};
                             drd <= 1'b1;
-                            sub_state <= 3'd0;
+                            sub_state <= 3'd3; // go to PCL pop
                             state <= S_S2;
                         end
                         default: ;
@@ -463,19 +458,26 @@ always @(posedge clk or negedge rst_n) begin
                     flag_ie <= 1'b0; // disable interrupts
                     sub_state <= 3'd4;
                 end
-                3'd4: begin // Load vector
+                3'd4: begin // Load vector: set PC to vector address, read low byte
                     case (int_type)
-                        2'd0: pc <= 16'h3FFE; // IRQ vector
-                        2'd1: pc <= 16'h3FFA; // NMI vector
-                        2'd2: pc <= 16'h3FF8; // TRAP vector
+                        2'd0: pc <= 16'h3FFE; // IRQ
+                        2'd1: pc <= 16'h3FFA; // NMI
+                        2'd2: pc <= 16'h3FF8; // TRAP
                         default: pc <= 16'h3FFC; // RESET
                     endcase
-                    // Read vector low byte
                     sub_state <= 3'd5;
-                    state <= S_F0; // fetch from vector address
                 end
-                3'd5: begin
-                    nmi_pending <= 1'b0; // clear if NMI
+                3'd5: begin // Read vector low byte from ROM (code_data = rom[pc])
+                    vector_addr[7:0] <= code_data;
+                    pc <= pc + 16'd1;
+                    sub_state <= 3'd6;
+                end
+                3'd6: begin // Read vector high byte from ROM
+                    vector_addr[15:8] <= code_data;
+                    // Jump to handler
+                    pc <= {code_data, vector_addr[7:0]};
+                    doing_int <= 1'b0;
+                    nmi_pending <= 1'b0;
                     state <= S_F0;
                 end
                 default: state <= S_F0;
