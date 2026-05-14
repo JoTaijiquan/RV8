@@ -237,13 +237,16 @@ All stocked at บ้านหม้อ, Shopee, RS Thailand.
 
 | | RV8 (EEPROM) | RV8-G (gates only) | RV801-B |
 |--|:---:|:---:|:---:|
-| Chips | 27+ | **27** | 9 |
+| Chips | 27 | **27** | 9 |
 | Instructions | 68 | **30** | 68 |
-| Control | EEPROM microcode | **Pure gates** | Hardwired (bit-serial) |
-| MIPS @ 10 MHz | 4.0 | **2.5** | 0.5 |
+| Control | SST39SF010A Flash (70ns) | **Pure gates** | Hardwired (bit-serial) |
+| Max clock | **10 MHz** (70ns Flash) | **10 MHz** (gates ~15ns) | 3.5 MHz |
+| MIPS @ 10 MHz | **4.0** | 2.5 | 0.5 |
 | Run BASIC | ✅ | ✅ | ⚠️ slow |
-| Needs programmer | Yes (EEPROM) | **No** | No |
+| Needs programmer | Yes (Flash/EEPROM) | **No** | No |
 | Build difficulty | Hard | **Medium** | Easy |
+| Control ROM | SST39SF010A-70 (PDIP-32, 70ns) | — | — |
+| Program ROM | AT28C256 (DIP-28, 150ns) | AT28C256 | AT28C256 |
 
 ---
 
