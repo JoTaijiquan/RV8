@@ -6,7 +6,7 @@ Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gat
 
 | | RV8-G | RV808-G |
 |--|:---:|:---:|
-| **Chips** | 23 | **20** |
+| **Chips** | 24 | **20** |
 | **Architecture** | Von Neumann (shared bus) | Harvard (internal ROM) |
 | **Instructions** | 30 | 22 |
 | **Control** | Pure gates (5 chips) | Pure gates (5 chips) |
@@ -88,7 +88,7 @@ python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 
 | Item | Status |
 |------|:------:|
-| RV8-G Verilog (24/24 pass) | ✅ (needs update for branch change) |
+| RV8-G Verilog (34/34 pass) | ✅ |
 | RV8-G control trace (proven) | ✅ |
 | RV808-G design doc | ✅ |
 | RV808-G Verilog | ⬜ |

@@ -182,61 +182,52 @@ Total control: **1× 74HC138 + 1× 74HC08 + 1× 74HC32 + 1× 74HC74** = 4 chips.
 
 ---
 
-## 6. Chip List (23 chips — proven, no cheating)
+## 6. Chip List (24 chips — honest, buildable, all DIP, available in Thailand)
 
-| U# | Chip | Function |
-|:--:|------|----------|
-| U1-U4 | 74HC161 ×4 | PC (16-bit counter, carry chain) |
-| U5-U6 | 74HC574 ×2 | IR (opcode + operand latch) |
-| U7-U9 | 74HC574 ×3 | Registers: a0, t0, sp |
-| U10-U11 | 74HC161 ×2 | Pointer: pl, ph (with auto-increment) |
-| U12-U13 | 74HC283 ×2 | ALU adder (8-bit, carry chain) |
-| U14 | 74HC86 | XOR (SUB invert + branch condition invert) |
-| U15-U16 | 74HC157 ×2 | Address mux (PC/pointer → address bus) |
-| U17 | 74HC139 | Dual 2-to-4 decoder: class decode + register write select |
-| U18 | 74HC74 | State counter (2 flip-flops, ripple) |
-| U19 | 74HC74 | Flags: Z, C |
-| U20 | 74HC08 | AND gates (control signal generation) |
-| U21 | 74HC32 | OR gates (control signal combining) |
-| — | AT28C256 | Program ROM (32KB) |
-| — | 62256 | Data RAM (32KB) |
-| **Total** | | **23 chips (21 logic + ROM + RAM)** |
+| U# | Chip | Function | /OE trick? |
+|:--:|------|----------|:----------:|
+| U1-U4 | 74HC161 ×4 | PC (16-bit counter, carry chain) | — |
+| U5 | 74HC574 | IR opcode (always output) | /OE=GND |
+| U6 | 74HC574 | IR operand (tri-state: off when t0 drives ALU B) | /OE=reg_mode |
+| U7 | 74HC574 | a0 (accumulator, always output to ALU A) | /OE=GND |
+| U8 | 74HC574 | t0 (tri-state: off when operand drives ALU B) | /OE=imm_mode |
+| U9 | 74HC574 | sp (stack pointer) | /OE=GND |
+| U10 | 74HC161 | pl (pointer low, auto-increment for ptr+) | — |
+| U11 | 74HC574 | ph (pointer high, tri-state to address bus A[15:8]) | /OE=fetch_mode |
+| U12-U13 | 74HC283 ×2 | ALU adder (8-bit, carry chain) | — |
+| U14 | 74HC86 | XOR (SUB invert low nibble + branch condition) | — |
+| U15 | 74HC86 | XOR (SUB invert high nibble) | — |
+| U16 | 74HC541 | PC high byte buffer (tri-state to address A[15:8]) | /OE=data_mode |
+| U17 | 74HC157 | Address mux LOW byte (PC[7:0] vs pl) | — |
+| U18 | 74HC139 | Dual decoder (class decode + register write select) | — |
+| U19 | 74HC74 | State counter (2 FF ripple) | — |
+| U20 | 74HC74 | Flags: Z, C | — |
+| U21 | 74HC08 | AND gates (control) | — |
+| U22 | 74HC32 | OR gates (control) | — |
+| — | AT28C256 | Program ROM (32KB) | — |
+| — | 62256 | Data RAM (32KB) | — |
+| **Total** | | **24 chips (22 logic + ROM + RAM)** | |
 
-**Optional**: Add 74HC245 bus buffer (U22) if driving long ribbon cable to expansion boards = 24 chips.
+### Key design tricks:
 
-### Control logic breakdown:
+1. **ALU B-source via /OE**: U6 (operand) and U8 (t0) share ALU B wires.
+   Only one active at a time via opcode bit. No mux chip needed.
 
-| Chip | Gate usage |
-|------|-----------|
-| U17 decoder A | opcode[7:6] → 4 class enables, /E=S2 |
-| U17 decoder B | opcode[1:0] → 4 register CLK enables, /E=write_en |
-| U18 FF1+FF2 | State[1:0] ripple counter (D=/Q, toggles) |
-| U19 FF1 | Z flag (D=alu_zero, CLK=flags_we) |
-| U19 FF2 | C flag (D=carry_out, CLK=flags_we) |
-| U20 gate 1 | S2 = state[1] AND /state[0] |
-| U20 gate 2 | S3 = state[1] AND state[0] |
-| U20 gate 3 | /WR = S3 AND store_mode |
-| U20 gate 4 | ph_clk = write_en AND ph_select |
-| U21 gate 1 | /RD = fetch_phase OR load_phase |
-| U21 gate 2 | a0_we = alu_write OR mem_load |
-| U21 gate 3 | pc_inc = S0 OR S1 (=/state[1]) |
-| U21 gate 4 | (spare) |
-| U14 gate (spare) | branch_invert = flag_out XOR opcode[5] |
+2. **Address high byte via /OE**: U11 (ph, 574) and U16 (PC high, 541) share A[15:8].
+   During fetch: U16 active, U11 high-Z.
+   During data: U11 active, U16 high-Z.
 
-### Branch condition (no extra chip):
+3. **Zero-page/Stack**: Software sets ph=$00 or ph=$30 before access.
+   No hardwired page logic needed.
 
-```
-opcode[4:3] = flag select: 00=Z, 01=C, 1x=always
-opcode[5]   = invert: 0=true, 1=false
+4. **74HC139 dual decoder**: One chip does both class decode AND register write select.
 
-flag_out = (opcode[3] ? flag_c : flag_z) OR opcode[4]
-branch_taken = flag_out XOR opcode[5]
+5. **Branch condition**: Spare XOR gate from U14 + AND/OR from U21/U22.
 
-Uses: 1 AND + 1 OR (from U20/U21) + 1 XOR (from U14 spare gate)
-```
+6. **Full 8-bit SUB**: Two 74HC86 chips (U14 low nibble, U15 high nibble).
 
-Branches: BEQ, BNE, BCS, BCC, BRA, JMP, JMP(ptr) — 6 conditions + 2 jumps.
-(BMI/BPL dropped — use CMPI + BCS for signed compare)
+### All chips available in DIP from Thailand:
+74HC161, 74HC574, 74HC283, 74HC86, 74HC541, 74HC157, 74HC139, 74HC74, 74HC08, 74HC32, AT28C256, 62256.
 
 ---
 
@@ -245,11 +236,10 @@ Branches: BEQ, BNE, BCS, BCC, BRA, JMP, JMP(ptr) — 6 conditions + 2 jumps.
 | Parameter | Value |
 |-----------|-------|
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
-| Cycles/instruction | 3 (no memory) or 4 (with memory) |
-| Avg cycles | ~3.3 |
-| MIPS @ 3.5 MHz | **1.06** |
-| MIPS @ 10 MHz | **3.03** |
-| BASIC lines/sec @ 10 MHz | ~850 |
+| Cycles/instruction | 4 (fixed) |
+| MIPS @ 3.5 MHz | **0.875** |
+| MIPS @ 10 MHz | **2.5** |
+| BASIC lines/sec @ 10 MHz | ~700 |
 
 ---
 
@@ -257,46 +247,20 @@ Branches: BEQ, BNE, BCS, BCC, BRA, JMP, JMP(ptr) — 6 conditions + 2 jumps.
 
 | | RV8 (EEPROM) | RV8-G (gates only) | RV801-B |
 |--|:---:|:---:|:---:|
-| Chips | 27+ | **22** | 9 |
-| Instructions | 68 | **24** | 68 |
+| Chips | 27+ | **24** | 9 |
+| Instructions | 68 | **30** | 68 |
 | Control | EEPROM microcode | **Pure gates** | Hardwired (bit-serial) |
-| MIPS @ 10 MHz | 4.0 | **3.03** | 0.5 |
+| MIPS @ 10 MHz | 4.0 | **2.5** | 0.5 |
 | Run BASIC | ✅ | ✅ | ⚠️ slow |
 | Needs programmer | Yes (EEPROM) | **No** | No |
-| Elegance | Complex | **Simple** | Ultra-minimal |
+| Build difficulty | Hard | **Medium** | Easy |
 
 ---
 
-## 9. Can 24 Instructions Really Run BASIC?
+## 9. Next Steps
 
-Yes. Here's a BASIC `PRINT 2+3` in RV8-G assembly:
-
-```asm
-; BASIC interpreter reads "2+3" from program text
-LI ph, $08         ; point to BASIC text page
-LI pl, $00         ; start of program
-LB (ptr)           ; read '2' → a0 = $32 (ASCII)
-SUBI $30           ; convert ASCII → number: a0 = 2
-PUSH a0            ; save on stack
-LB (ptr)           ; read '+' → a0 = $2B
-; (interpreter recognizes '+', reads next number)
-LB (ptr)           ; read '3' → a0 = $33
-SUBI $30           ; a0 = 3
-POP t0             ; t0 = 2 (from stack... wait, POP goes to a0)
-```
-
-Hmm — need `MOV t0, a0` or `POP t0`. Let me add MOV:
-
-**Add 1 more instruction**: `MOV t0, a0` (opcode 00_111_001) — reuse ALU class with op=PASS.
-
-**Revised: 25 instructions.** Still fits in the same decode.
-
----
-
-## 10. Next Steps
-
-- [ ] Finalize opcode encoding (exact bit assignments)
-- [ ] Verify control logic fits in 4 gate chips (trace every signal)
-- [ ] Write Verilog model
-- [ ] Testbench
-- [ ] WiringGuide (full pin-level, no ambiguity)
+- [ ] Update Verilog model to match 24-chip design
+- [ ] Complete WiringGuide (pin-level, every wire)
+- [ ] Assembler (rv8g_asm.py)
+- [ ] Build guide (labs, Thai+English)
+- [ ] Breadboard build
