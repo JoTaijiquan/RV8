@@ -23,6 +23,31 @@ Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gat
 > Opcode bits ARE control signals — wired directly to hardware.
 > If you can wire a breadboard, you can build a computer.
 
+## ISA (25 instructions)
+
+Format: `[opcode 8-bit] [operand 8-bit]` — all instructions are 2 bytes.
+
+```
+opcode[7:6] = class    → 74HC138 decodes into 4 enables
+opcode[5:3] = operation → wires directly to ALU/mux/flag select
+opcode[2:0] = modifier  → wires directly to register select
+```
+
+| Class | Instructions | What they do |
+|:-----:|-------------|-------------|
+| **00** ALU | ADD, SUB, AND, OR, XOR, CMP, INC, DEC | Arithmetic + logic (reg or immediate) |
+| | ADDI, SUBI, ANDI, ORI, XORI, CMPI, MOV | |
+| **01** Load/Store | LI a0/t0/sp/pl/ph | Load immediate to register |
+| | LB (ptr), SB (ptr), LB (ptr+) | Memory via pointer |
+| | LB zp:imm, SB zp:imm | Zero-page memory |
+| **10** Branch | BEQ, BNE, BCS, BCC, BMI, BPL, BRA | Conditional/unconditional branch |
+| | JMP | Absolute jump |
+| **11** System | PUSH, POP | Stack operations |
+| | CALL, RET | Subroutines |
+| | NOP, HLT, EI, DI | Control |
+
+**Enough for**: BASIC interpreter, games, string processing, I/O.
+
 ## Project Structure
 
 ```
