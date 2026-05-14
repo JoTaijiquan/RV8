@@ -1,103 +1,62 @@
-# RV8-G: Pure Gates 8-bit CPU Family
+# RV8 Project: Minimal 8-bit CPU Family
 
-Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gates.**
+Build real computers from 74HC chips on breadboards.
 
-## CPU Variants
+## Active Designs
 
-| | RV8-G | RV808-G |
+| | RV802 | RV8-G |
 |--|:---:|:---:|
-| **Chips** | 27 | **20** |
-| **Architecture** | Von Neumann (shared bus) | Harvard (internal ROM) |
-| **Instructions** | 30 | 22 |
-| **Control** | Pure gates (5 chips) | Pure gates (5 chips) |
-| **MIPS @ 10 MHz** | 2.5 | **3.0** |
-| **Run BASIC** | ✅ | ✅ |
-| **Play games** | ✅ | ✅ |
-| **Needs programmer** | No (only ROM) | No (only ROM) |
-| **Breadboards** | 3 | 2-3 |
-| **Cost** | ~$12 | ~$10 |
-
-## The Constraint
-
-> No EEPROM for control. No GAL/PAL. No microcode.
-> Opcode bits ARE control signals — wired directly to hardware.
-> If you can wire a breadboard, you can build a computer.
-
-## ISA (30 instructions)
-
-Format: `[opcode 8-bit] [operand 8-bit]` — all instructions are 2 bytes.
-
-```
-opcode[7:6] = class    → 74HC139 decoder A (4 class enables)
-opcode[5:3] = operation → wires directly to ALU/mux/flag select
-opcode[1:0] = modifier  → 74HC139 decoder B (register select)
-```
-
-| Class | Instructions | What they do |
-|:-----:|-------------|-------------|
-| **00** ALU | ADD, SUB, AND, OR, XOR, CMP, INC, DEC | Arithmetic + logic |
-| | ADC, SBC, SHL, SHR | Carry chain + shifts |
-| | ADDI, SUBI, ANDI, ORI, XORI, CMPI | Immediate variants |
-| | MOV t0,a0 | Register move |
-| **01** Load/Store | LI a0/t0/sp/pl/ph | Load immediate |
-| | LB/SB (ptr), LB (ptr+), LB/SB zp:imm | Memory access |
-| | MOV pl,a0 / MOV ph,a0 | Computed pointer |
-| **10** Branch | BEQ, BNE, BCS, BCC, BRA | Conditional branch |
-| | JMP imm, JMP (ptr) | Absolute + computed jump |
-| **11** System | PUSH, POP, CALL, RET | Stack + subroutines |
-| | NOP, HLT, EI, DI | Control |
-
-**Enough for**: BASIC interpreter, video games, sound, 16-bit math.
-**Note**: BMI/BPL (signed branch) removed to save 1 chip. Use CMPI+BCS workaround.
+| **Chips** | **23** | 27 |
+| **Registers** | 8 (RISC-V style) | 5 (accumulator) |
+| **ISA** | 35 instr (register-register) | 30 instr (accumulator) |
+| **Control** | Flash microcode (SST39SF010A) | Pure gates (no EEPROM) |
+| **MIPS @ 10 MHz** | **3.0** | 2.5 |
+| **Needs programmer** | Yes (Flash) | **No** |
+| **Best for** | Performance + clean ISA | No-programmer purists |
 
 ## Project Structure
 
 ```
 RV8/
-├── RV8G/           ← RV8-G (23 chips, shared bus, gates-only)
-├── RV808G/         ← RV808-G (20 chips, Harvard, gates-only)
-├── Programmer/     ← ESP32 programmer board (flash ROM + terminal)
-├── Trainer/        ← Trainer board (step, LEDs, keyboard)
-├── Old_Design/     ← Archived: RV8(26), RV801(9), RV808(23) — need EEPROM
-├── CHANGELOG.md
-├── HISTORY.md
+├── RV802/          ← 23 chips, RISC-V style, Flash microcode — ACTIVE
+├── RV8G/           ← 27 chips, accumulator, pure gates — ACTIVE
+├── RV808G/         ← 20 chips, Harvard, gates (design study)
+├── Programmer/     ← ESP32 board (flash ROM + terminal)
+├── Old_Design/     ← Archived (RV8 original, RV801, RV808)
+├── Trainer/        ← Trainer board (planned)
+├── Computer/       ← Full PC board (planned)
 └── README.md
 ```
 
 ## Quick Start
 
 ```bash
-# Simulate RV8-G
+# Simulate RV8-G (working now)
 cd RV8G && iverilog -o tb rv8g_cpu.v tb/tb_rv8g_cpu.v && vvp tb
 
 # Flash a program (with Programmer board)
 python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 program.bin
-
-# Terminal mode
-python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 ```
 
 ## Which to build?
 
 | Your goal | Build |
 |-----------|-------|
-| Understand shared-bus CPU | **RV8-G** (23 chips, pointer addressing) |
-| Minimum chips, fastest | **RV808-G** (20 chips, page:offset) |
-
-## Status
-
-| Item | Status |
-|------|:------:|
-| RV8-G Verilog (34/34 pass) | ✅ |
-| RV8-G control trace (proven) | ✅ |
-| RV808-G design doc | ✅ |
-| RV808-G Verilog | ⬜ |
-| Programmer board | ✅ |
-| Assembler | ⬜ |
-| Build guide (labs) | ⬜ |
-| BASIC interpreter | ⬜ |
-| Breadboard build | ⬜ |
+| Fewest chips, fastest, RISC-V style | **RV802** (23 chips) |
+| No programmer needed, pure gates | **RV8-G** (27 chips) |
 
 ## The Philosophy
 
-> **RV8-G**: A computer needs no programmable logic — just gates, wires, and ROM for your program.
+> **RV802**: Simple hardware + smart microcode = powerful CPU.
+> **RV8-G**: No black boxes — every signal is a wire you placed.
+
+## Status
+
+| Item | RV802 | RV8-G |
+|------|:-----:|:-----:|
+| Design doc | ✅ | ✅ |
+| Verilog model | ⬜ | ✅ (34/34) |
+| WiringGuide | ⬜ | ⬜ (needs rewrite) |
+| Assembler | ⬜ | ⬜ |
+| Build guide | ⬜ | ⬜ |
+| Programmer board | ✅ | ✅ |

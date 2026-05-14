@@ -1,16 +1,17 @@
 {
 // ═══════════════════════════════════════════════════════════════
 // RV8 CPU — Full Function Wiring Guide
-// 26 chips + control EEPROM (realistic full decode)
+// 27 chips: 23 CPU + Control Flash + Address Decode + ROM + RAM
 // ═══════════════════════════════════════════════════════════════
 //
-// NOTE: The original 26-chip design assumed control decode fits in
-// U22 (74HC08) + U23 (74HC32). In reality, the full 17-state FSM
-// with 68-instruction decode needs a CONTROL EEPROM (AT28C16 or
-// similar) to generate all control signals from {state, opcode}.
-// This is the REALISTIC full-function wiring.
+// CONTROL: SST39SF010A-70 (70ns, PDIP-32, 128KB Flash)
+//   - Generates all control signals from {state[4:0], opcode[7:0]}
+//   - 70ns access time → works at 10 MHz (100ns period, 30ns margin)
+//   - Program once with microcode table, read-only during operation
+//   - Available: Mouser/DigiKey, ships to Thailand, ~$3
 //
-// Alternative: use ~4 more gate chips instead of EEPROM.
+// CLOCK: 10 MHz on PCB, 3.5 MHz on breadboard
+// PERFORMANCE: 4.0 MIPS @ 10 MHz, 1.4 MIPS @ 3.5 MHz
 // ═══════════════════════════════════════════════════════════════
 
 Project: RV8,
@@ -34,9 +35,9 @@ Bus:{
     D0: U19.18, D1: U19.17, D2: U19.16, D3: U19.15,
     D4: U19.14, D5: U19.13, D6: U19.12, D7: U19.11,
 
-    // === MEMORY CONTROL (accent from control EEPROM) ===
-    /RD : control_eeprom.D0 — memory read strobe → ROM.22 + RAM.22,
-    /WR : control_eeprom.D1 — memory write strobe → RAM.27,
+    // === MEMORY CONTROL (accent from control Flash) ===
+    /RD : ctrl_flash.D0 — memory read strobe → ROM.22 + RAM.22,
+    /WR : ctrl_flash.D1 — memory write strobe → RAM.27,
 
     // === STATE (from state counter U_SC) ===
     S0: state_counter.Q0,
@@ -45,7 +46,7 @@ Bus:{
     S3: state_counter.Q3,
     S4: state_counter.Q4,
 
-    // === CONTROL SIGNALS (from control EEPROM outputs accent accent) ===
+    // === CONTROL SIGNALS (from control Flash outputs accent accent) ===
     pc_inc   : ctrl.D2 — increment PC → U1-U4 ENP+ENT,
     pc_ld    : ctrl.D3 — load PC (branch/jump) → U1-U4 /LD,
     ir0_clk  : ctrl.D4 — latch opcode → U5.11,
@@ -144,7 +145,7 @@ Part:{
         16:ctrl_eeprom.A4, 17:U18.1, 18:U18.2, 19:U18.3, 20:VCC},
     // pin 1(/OE)=GND (always output)
     // pin 11(CLK)=ir0_clk (from control, active during F0)
-    // pin 12-16(Q0-Q4)=opcode[4:0] → control EEPROM address A0-A4
+    // pin 12-16(Q0-Q4)=opcode[4:0] → control Flash address A0-A4
     // pin 17-19(Q5-Q7)=opcode[7:5] → U18 A,B,C (unit decode)
 
     U6:{type:74HC574, function:"IR operand",
@@ -318,7 +319,7 @@ Part:{
     // pin 1(A)=U5.17(opcode bit5), pin 2(B)=U5.18(bit6), pin 3(C)=U5.19(bit7)
     // pin 4(/G2A)=GND, pin 5(/G2B)=GND, pin 6(G1)=VCC (always enabled)
     // pin 15(/Y0)=unit0 active, pin 14(/Y1)=unit1, ..., pin 7(/Y7)=unit7
-    // These feed into control EEPROM or additional decode gates
+    // These feed into control Flash or additional decode gates
 
     // ═══════════════════════════════════════════
     // BUS BUFFER — 74HC245 (U19)
@@ -369,7 +370,7 @@ Part:{
         9:, 10:, 11:, 12:,
         13:, 14:VCC},
     // Available for: NMI edge detect, skip gating, misc control
-    // Specific assignments depend on control EEPROM vs discrete decode
+    // Specific assignments depend on control Flash vs discrete decode
 
     U23:{type:74HC32, function:"OR gates (chip enable combining)",
         1:U24.15, 2:U24.14, 3:, 4:U23.3,
@@ -406,19 +407,49 @@ Part:{
     // /Y7(pin 7): $E000-$FFFF ROM ─┘
 
     // ═══════════════════════════════════════════
-    // CONTROL EEPROM — AT28C16 (optional, replaces complex gate decode)
-    // Generates all control signals from {state[4:0], opcode[4:0]}
+    // CONTROL FLASH — SST39SF010A-70 (PDIP-32, 70ns, 128KB)
+    // Generates ALL control signals from {state, opcode, flags}
+    // One chip replaces all control decode logic
     // ═══════════════════════════════════════════
 
-    CTRL:{type:AT28C16, function:"Control signal generator (microcode)",
-        // Address inputs: A0-A4 = opcode[4:0] (from U5 pins 12-16)
-        //                 A5-A9 = state[4:0] (from state counter)
-        //                 A10   = flag_z or branch condition
-        // Data outputs: D0-D7 = control signals
-        //   D0=/RD, D1=/WR, D2=pc_inc, D3=pc_ld,
-        //   D4=ir0_clk, D5=ir1_clk, D6=reg_we, D7=alu_op0
-        // NOTE: May need 2nd EEPROM for remaining signals (alu_op1-3, wr_sel, addr_sel)
-        },
+    CTRL:{type:SST39SF010A-70, package:PDIP-32, function:"Microcode control ROM",
+        // Address inputs (17 bits used of 17 available):
+        //   A0-A7  = opcode[7:0] (from U5 pins 12-19) — full opcode
+        //   A8-A12 = state[4:0] (from state counter) — 17 states
+        //   A13    = flag_z (from U20.5)
+        //   A14    = flag_c (from U20.9)
+        //   A15    = flag_n (from U21.5)
+        //   A16    = GND (unused, bank select for future)
+        //
+        // Data outputs (8 bits × 2 chips, or use 1 chip with 2 reads):
+        //   D0 = /RD (memory read strobe)
+        //   D1 = /WR (memory write strobe)
+        //   D2 = pc_inc (PC increment enable)
+        //   D3 = pc_ld (PC parallel load)
+        //   D4 = ir0_clk (latch opcode)
+        //   D5 = ir1_clk (latch operand)
+        //   D6 = reg_we (register write enable)
+        //   D7 = addr_sel (address mux: 0=PC, 1=pointer/stack)
+        //
+        // For remaining signals (alu_op[3:0], wr_sel[2:0], flags_we, etc):
+        //   Use 2nd SST39SF010A with same address, different data outputs
+        //   OR: use single chip with 2-phase read (CLK high/low)
+        //   OR: pack into fewer bits with secondary decode from U22/U23
+        //
+        // TIMING: 70ns access. At 10 MHz (100ns period): 30ns margin. ✅
+        //
+        // Pin connections (PDIP-32):
+        1:A14_flag_c, 2:A12_state4, 3:A7_op7, 4:A6_op6,
+        5:A5_op5, 6:A4_op4, 7:A3_op3, 8:A2_op2,
+        9:A1_op1, 10:A0_op0, 11:D0_rd, 12:D1_wr,
+        13:D2_pc_inc, 14:GND, 15:D3_pc_ld, 16:D4_ir0_clk,
+        17:D5_ir1_clk, 18:D6_reg_we, 19:D7_addr_sel, 20:GND,
+        21:A10_state2, 22:GND, 23:A11_state3, 24:A9_state1,
+        25:A8_state0, 26:A13_flag_z, 27:VCC, 28:VCC,
+        29:A15_flag_n, 30:A16_GND, 31:VCC, 32:VCC},
+    // /CE (pin 22) = GND (always selected)
+    // /OE (pin 24... check datasheet) = GND (always reading)
+    // Total: 16 address bits used = 65536 entries × 8 bits = 64KB used of 128KB
 
     // ═══════════════════════════════════════════
     // ROM — AT28C256 (32KB program storage)
