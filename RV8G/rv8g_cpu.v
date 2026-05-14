@@ -191,28 +191,30 @@ always @(posedge clk or negedge rst_n) begin
             end
 
             // --- Class 10: Branch/Jump ---
+            // New encoding: opcode[4:3]=flag(00=Z,01=C,1x=always), opcode[5]=invert
+            // opcode[5:3]=000 BEQ(Z=1), 001 BCS(C=1), 010 BRA(always)
+            //             100 BNE(Z=0), 101 BCC(C=0), 110 (always,same as BRA)
+            //             111 JMP (with modf[0]: 0=absolute, 1=indirect)
             2'b10: begin
-                case (ir_op[5:3])
-                    3'd0: if (flag_z)  pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd1: if (!flag_z) pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd2: if (flag_c)  pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd3: if (!flag_c) pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd4: if (flag_n)  pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd5: if (!flag_n) pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
-                    3'd6: pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in}; // BRA
-                    3'd7: begin // JMP: modf[0]=0 → JMP imm, modf[0]=1 → JMP (ptr)
+                if (ir_op[5:3] == 3'd7 || ir_op[5:3] == 3'd3) begin
+                    // JMP: op=111 or op=011
+                    if (ir_op[5:3] == 3'd7) begin
                         if (ir_op[0])
-                            pc <= {ph, pl}; // JMP (ptr) — computed jump
+                            pc <= {ph, pl};      // JMP (ptr)
                         else
-                            pc <= {ph, data_in}; // JMP imm — absolute
+                            pc <= {ph, data_in}; // JMP imm
+                    end else begin
+                        pc <= {ph, data_in};     // JMP imm (alt encoding)
                     end
-                endcase
-                if (ir_op[5:3] != 3'd7 && !(
-                    (ir_op[5:3]==3'd0 && flag_z) || (ir_op[5:3]==3'd1 && !flag_z) ||
-                    (ir_op[5:3]==3'd2 && flag_c) || (ir_op[5:3]==3'd3 && !flag_c) ||
-                    (ir_op[5:3]==3'd4 && flag_n) || (ir_op[5:3]==3'd5 && !flag_n) ||
-                    (ir_op[5:3]==3'd6)))
-                    pc <= pc + 16'd1; // not taken: normal increment
+                end else begin
+                    // Branch: determine condition
+                    // flag_sel: bit3=0→Z, bit3=1→C; bit4=1→always
+                    // invert: bit5
+                    if ((ir_op[4] ? 1'b1 : (ir_op[3] ? flag_c : flag_z)) ^ ir_op[5])
+                        pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
+                    else
+                        pc <= pc + 16'd1; // not taken
+                end
                 state <= S0;
             end
 
