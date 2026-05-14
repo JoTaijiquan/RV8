@@ -182,52 +182,42 @@ Total control: **1× 74HC138 + 1× 74HC08 + 1× 74HC32 + 1× 74HC74** = 4 chips.
 
 ---
 
-## 6. Chip List (24 chips — honest, buildable, all DIP, available in Thailand)
+## 6. Chip List (27 chips — honest, fully working, pure gates, no EEPROM)
 
-| U# | Chip | Function | /OE trick? |
-|:--:|------|----------|:----------:|
-| U1-U4 | 74HC161 ×4 | PC (16-bit counter, carry chain) | — |
-| U5 | 74HC574 | IR opcode (always output) | /OE=GND |
-| U6 | 74HC574 | IR operand (tri-state: off when t0 drives ALU B) | /OE=reg_mode |
-| U7 | 74HC574 | a0 (accumulator, always output to ALU A) | /OE=GND |
-| U8 | 74HC574 | t0 (tri-state: off when operand drives ALU B) | /OE=imm_mode |
-| U9 | 74HC574 | sp (stack pointer) | /OE=GND |
-| U10 | 74HC161 | pl (pointer low, auto-increment for ptr+) | — |
-| U11 | 74HC574 | ph (pointer high, tri-state to address bus A[15:8]) | /OE=fetch_mode |
-| U12-U13 | 74HC283 ×2 | ALU adder (8-bit, carry chain) | — |
-| U14 | 74HC86 | XOR (SUB invert low nibble + branch condition) | — |
-| U15 | 74HC86 | XOR (SUB invert high nibble) | — |
-| U16 | 74HC541 | PC high byte buffer (tri-state to address A[15:8]) | /OE=data_mode |
-| U17 | 74HC157 | Address mux LOW byte (PC[7:0] vs pl) | — |
-| U18 | 74HC139 | Dual decoder (class decode + register write select) | — |
-| U19 | 74HC74 | State counter (2 FF ripple) | — |
-| U20 | 74HC74 | Flags: Z, C | — |
-| U21 | 74HC08 | AND gates (control) | — |
-| U22 | 74HC32 | OR gates (control) | — |
-| — | AT28C256 | Program ROM (32KB) | — |
-| — | 62256 | Data RAM (32KB) | — |
-| **Total** | | **24 chips (22 logic + ROM + RAM)** | |
+| U# | Chip | Function |
+|:--:|------|----------|
+| U1-U4 | 74HC161 ×4 | PC (16-bit counter, carry chain) |
+| U5 | 74HC574 | IR opcode |
+| U6 | 74HC574 | IR operand |
+| U7 | 74HC574 | a0 (accumulator) |
+| U8 | 74HC574 | t0 (temporary) |
+| U9 | 74HC574 | sp (stack pointer) |
+| U10 | 74HC161 | pl (pointer low, auto-increment) |
+| U11 | 74HC574 | ph (pointer high) |
+| U12-U13 | 74HC283 ×2 | ALU adder (8-bit) |
+| U14-U15 | 74HC86 ×2 | XOR (8-bit SUB invert + branch logic) |
+| U16-U17 | 74HC157 ×2 | Address mux low byte (PC vs pl, 8-bit) |
+| U18 | 74HC541 | PC high byte buffer (tri-state) |
+| U19 | 74HC245 | Data bus buffer (ALU result ↔ bus) |
+| U20 | 74HC139 | Dual decoder (class + register select) |
+| U21 | 74HC74 | State counter (2 FF) |
+| U22 | 74HC74 | Flags (Z, C) |
+| U23 | 74HC08 | AND gates (control) |
+| U24 | 74HC32 | OR gates (control) |
+| — | AT28C256 | Program ROM |
+| — | 62256 | Data RAM |
+| **Total** | | **27 chips (25 logic + ROM + RAM)** |
 
-### Key design tricks:
-
-1. **ALU B-source via /OE**: U6 (operand) and U8 (t0) share ALU B wires.
-   Only one active at a time via opcode bit. No mux chip needed.
-
-2. **Address high byte via /OE**: U11 (ph, 574) and U16 (PC high, 541) share A[15:8].
-   During fetch: U16 active, U11 high-Z.
-   During data: U11 active, U16 high-Z.
-
-3. **Zero-page/Stack**: Software sets ph=$00 or ph=$30 before access.
-   No hardwired page logic needed.
-
-4. **74HC139 dual decoder**: One chip does both class decode AND register write select.
-
-5. **Branch condition**: Spare XOR gate from U14 + AND/OR from U21/U22.
-
-6. **Full 8-bit SUB**: Two 74HC86 chips (U14 low nibble, U15 high nibble).
+### Why 27 (not 23-24):
+- 2× 74HC157 needed for full 8-bit address mux (not just 4-bit)
+- 2× 74HC86 needed for full 8-bit SUB/SBC
+- 1× 74HC541 needed for PC high byte tri-state
+- 1× 74HC245 needed for ALU result → data bus routing
+- These cannot be eliminated without losing functionality
 
 ### All chips available in DIP from Thailand:
-74HC161, 74HC574, 74HC283, 74HC86, 74HC541, 74HC157, 74HC139, 74HC74, 74HC08, 74HC32, AT28C256, 62256.
+74HC161, 574, 283, 86, 157, 541, 245, 139, 74, 08, 32, AT28C256, 62256.
+All stocked at บ้านหม้อ, Shopee, RS Thailand.
 
 ---
 
@@ -247,7 +237,7 @@ Total control: **1× 74HC138 + 1× 74HC08 + 1× 74HC32 + 1× 74HC74** = 4 chips.
 
 | | RV8 (EEPROM) | RV8-G (gates only) | RV801-B |
 |--|:---:|:---:|:---:|
-| Chips | 27+ | **24** | 9 |
+| Chips | 27+ | **27** | 9 |
 | Instructions | 68 | **30** | 68 |
 | Control | EEPROM microcode | **Pure gates** | Hardwired (bit-serial) |
 | MIPS @ 10 MHz | 4.0 | **2.5** | 0.5 |
