@@ -1,20 +1,61 @@
 {
 Project: RV8,
 Bus:{
+    // === POWER ===
     VCC  : +5V,
     GND  : GND,
-    /CLR : Reset (active low),
-    CLK  : Clock (3.5MHz crystal),
+
+    // === RESET + CLOCK ===
+    /CLR : Reset (active low) — R1 pull-up + SW_RST to GND + C7 debounce,
+    CLK  : Clock (3.5MHz crystal) — OSC pin 8,
+
+    // === ADDRESS BUS (16-bit, active during memory access) ===
     A0:, A1:, A2:, A3:, A4:, A5:, A6:, A7:,
     A8:, A9:, A10:, A11:, A12:, A13:, A14:, A15:,
+
+    // === DATA BUS (8-bit, bidirectional) ===
     D0:, D1:, D2:, D3:, D4:, D5:, D6:, D7:,
-    /RD  : Memory read,
-    /WR  : Memory write,
-    SYNC : Instruction start pulse,
-    HALT : CPU halted,
-    /RAM_CE : RAM chip enable (active when A[15:13]=000-011 → $0000-$7FFF),
-    /ROM_CE : ROM chip enable (active when A[15:13]=110-111 → $C000-$FFFF),
-    /IO_CE  : I/O chip enable (active when A[15:13]=100 → $8000-$9FFF),
+
+    // === MEMORY CONTROL ===
+    /RD      : Memory read (active low) — from control logic,
+    /WR      : Memory write (active low) — from control logic,
+
+    // === STATE SIGNALS (from U21 FF2 state toggle) ===
+    state_F0 : Fetch opcode phase — U21 pin 8 (/Q2),
+    state_F1 : Fetch operand phase — U21 pin 9 (Q2),
+
+    // === GATED CLOCKS (from U22 AND gates) ===
+    ir0_clk  : Latch opcode — U22 pin 3 (= CLK AND state_F0) → U5 pin 11,
+    ir1_clk  : Latch operand — U22 pin 6 (= CLK AND state_F1) → U6 pin 11,
+
+    // === DERIVED CONTROL (from U23 OR gates) ===
+    pc_inc   : PC increment enable — U23 pin 3 (= state_F0 OR state_F1) → U1-U4 pin 7+10,
+
+    // === FLAGS (from U20 + U21 FF1) ===
+    flag_z   : Zero flag — U20 pin 5 (Q1) — set when ALU result = 0,
+    flag_c   : Carry flag — U20 pin 9 (Q2) — set on ALU carry/borrow,
+    flag_n   : Negative flag — U21 pin 5 (Q1) — set when ALU result bit 7 = 1,
+    flags_clk: Flags latch clock — from control (clocks U20 + U21 FF1),
+    alu_zero : ALU result == 0 detect — combinational → U20 pin 2 (D1),
+    alu_sign : ALU result bit 7 — from U12/U14 → U21 pin 2 (D1),
+    carry_out: ALU carry output — U14 pin 9 (C4) → U20 pin 12 (D2),
+
+    // === REGISTER CLOCKS ===
+    a0_clk   : Accumulator write clock — from control → U7 pin 11,
+    t0_clk   : Temp register write clock — from control → U8 pin 11,
+    sp_clk   : Stack pointer write clock — from control → U9 pin 11,
+    pg_clk   : Page register write clock — from control → U10 pin 11,
+
+    // === POINTER CONTROL ===
+    ptr_inc  : Pointer auto-increment — from control → U11 pin 7+10 / U12 pin 7,
+    pl_ld    : Pointer low load — from control → U11 pin 9,
+    ph_ld    : Pointer high load — from control → U12 pin 9,
+
+    // === ADDRESS MUX ===
+    addr_sel : Address source select — from control → U16 pin 1 / U17 pin 1,
+    //         0 = PC (fetch), 1 = pointer/stack/zp (data access)
+
+    // === DECODE OUTPUTS (from U24) ===
     /Y0  : U24 decode — A[15:13]=000 → RAM $0000-$1FFF,
     /Y1  : U24 decode — A[15:13]=001 → RAM $2000-$3FFF,
     /Y2  : U24 decode — A[15:13]=010 → RAM $4000-$5FFF,
@@ -22,7 +63,35 @@ Bus:{
     /Y4  : U24 decode — A[15:13]=100 → I/O $8000-$9FFF,
     /Y5  : U24 decode — A[15:13]=101 → (unused),
     /Y6  : U24 decode — A[15:13]=110 → ROM $C000-$DFFF,
-    /Y7  : U24 decode — A[15:13]=111 → ROM $E000-$FFFF
+    /Y7  : U24 decode — A[15:13]=111 → ROM $E000-$FFFF,
+    /RAM_CE : RAM chip enable — /Y0 OR /Y1 OR /Y2 OR /Y3 (via U23) → RAM pin 20,
+    /ROM_CE : ROM chip enable — /Y6 OR /Y7 (via U23) → ROM pin 20,
+    /IO_CE  : I/O chip enable — /Y4 directly → RV8-Bus pin 33,
+
+    // === INSTRUCTION DECODE (from U18) ===
+    exec_phase: Execute phase active — from state logic → U18 pin 6 (G1),
+    /Y0_u18: Unit 0 (ALU reg) — U18 pin 15,
+    /Y1_u18: Unit 1 (ALU imm) — U18 pin 14,
+    /Y2_u18: Unit 2 (Load/Store) — U18 pin 13,
+    /Y3_u18: Unit 3 (Branch) — U18 pin 12,
+    /Y4_u18: Unit 4 (Shift) — U18 pin 11,
+    /Y5_u18: Unit 5 (LI) — U18 pin 10,
+    /Y6_u18: Unit 6 (Stack/Jump) — U18 pin 9,
+    /Y7_u18: Unit 7 (System) — U18 pin 7,
+
+    // === ALU INTERNAL ===
+    sub_mode : SUB/CMP active — from decode → U15 pin 2/5/10/13 (XOR invert),
+    carry_in : ALU carry input — 0 for ADD / 1 for SUB → U13 pin 7,
+
+    // === BUS BUFFER CONTROL ===
+    bus_dir  : Data bus direction — from control → U19 pin 1 (HIGH=read LOW=write),
+    bus_oe   : Bus buffer enable — from control → U19 pin 19 (active low),
+
+    // === EXTERNAL (40-pin connector) ===
+    SYNC : Instruction start pulse — pin 32,
+    HALT : CPU halted — pin 31,
+    /NMI : Non-maskable interrupt input — pin 29,
+    /IRQ : Maskable interrupt input — pin 30
     },
 
 Part:{
