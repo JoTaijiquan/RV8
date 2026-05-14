@@ -8,7 +8,7 @@ Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gat
 |--|:---:|:---:|
 | **Chips** | 23 | **20** |
 | **Architecture** | Von Neumann (shared bus) | Harvard (internal ROM) |
-| **Instructions** | 25 | 22 |
+| **Instructions** | 32 | 22 |
 | **Control** | Pure gates (5 chips) | Pure gates (5 chips) |
 | **MIPS @ 10 MHz** | 2.5 | **3.0** |
 | **Run BASIC** | ✅ | ✅ |
@@ -23,30 +23,31 @@ Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gat
 > Opcode bits ARE control signals — wired directly to hardware.
 > If you can wire a breadboard, you can build a computer.
 
-## ISA (25 instructions)
+## ISA (32 instructions)
 
 Format: `[opcode 8-bit] [operand 8-bit]` — all instructions are 2 bytes.
 
 ```
 opcode[7:6] = class    → 74HC138 decodes into 4 enables
 opcode[5:3] = operation → wires directly to ALU/mux/flag select
-opcode[2:0] = modifier  → wires directly to register select
+opcode[1:0] = modifier  → immediate/carry/shift/register select
 ```
 
 | Class | Instructions | What they do |
 |:-----:|-------------|-------------|
-| **00** ALU | ADD, SUB, AND, OR, XOR, CMP, INC, DEC | Arithmetic + logic (reg or immediate) |
-| | ADDI, SUBI, ANDI, ORI, XORI, CMPI, MOV | |
-| **01** Load/Store | LI a0/t0/sp/pl/ph | Load immediate to register |
-| | LB (ptr), SB (ptr), LB (ptr+) | Memory via pointer |
-| | LB zp:imm, SB zp:imm | Zero-page memory |
-| **10** Branch | BEQ, BNE, BCS, BCC, BMI, BPL, BRA | Conditional/unconditional branch |
-| | JMP | Absolute jump |
-| **11** System | PUSH, POP | Stack operations |
-| | CALL, RET | Subroutines |
+| **00** ALU | ADD, SUB, AND, OR, XOR, CMP, INC, DEC | Arithmetic + logic |
+| | ADC, SBC, SHL, SHR | Carry chain + shifts |
+| | ADDI, SUBI, ANDI, ORI, XORI, CMPI | Immediate variants |
+| | MOV t0,a0 | Register move |
+| **01** Load/Store | LI a0/t0/sp/pl/ph | Load immediate |
+| | LB/SB (ptr), LB (ptr+), LB/SB zp:imm | Memory access |
+| | MOV pl,a0 / MOV ph,a0 | Computed pointer |
+| **10** Branch | BEQ, BNE, BCS, BCC, BMI, BPL, BRA | Conditional branch |
+| | JMP imm, JMP (ptr) | Absolute + computed jump |
+| **11** System | PUSH, POP, CALL, RET | Stack + subroutines |
 | | NOP, HLT, EI, DI | Control |
 
-**Enough for**: BASIC interpreter, games, string processing, I/O.
+**Enough for**: BASIC interpreter, video games, sound, 16-bit math.
 
 ## Project Structure
 
@@ -86,7 +87,7 @@ python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 
 | Item | Status |
 |------|:------:|
-| RV8-G Verilog (17/17 pass) | ✅ |
+| RV8-G Verilog (24/24 pass) | ✅ |
 | RV8-G control trace (proven) | ✅ |
 | RV808-G design doc | ✅ |
 | RV808-G Verilog | ⬜ |

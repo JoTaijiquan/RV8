@@ -52,83 +52,109 @@ The 74HC138 decodes `opcode[7:6]` into 4 class-enable lines. Within each class, 
 
 ---
 
-## 3. Instruction Set (~24 instructions)
+## 3. Instruction Set (32 instructions)
 
-### Class 00: ALU (opcode[5:3] = ALU op, opcode[2:0] = source)
+### Class 00: ALU (opcode[5:3] = ALU op, opcode[1] = carry/shift, opcode[0] = immediate)
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
 | 00_000_000 | ADD t0 | a0 ← a0 + t0 |
-| 00_001_000 | SUB t0 | a0 ← a0 - t0 |
-| 00_010_000 | AND t0 | a0 ← a0 & t0 |
-| 00_011_000 | OR t0 | a0 ← a0 \| t0 |
-| 00_100_000 | XOR t0 | a0 ← a0 ^ t0 |
-| 00_101_000 | CMP t0 | flags ← a0 - t0 |
-| 00_110_000 | INC | a0 ← a0 + 1 |
-| 00_111_000 | DEC | a0 ← a0 - 1 |
 | 00_000_001 | ADDI imm | a0 ← a0 + imm |
+| 00_000_010 | ADC t0 | a0 ← a0 + t0 + C |
+| 00_000_011 | ADCI imm | a0 ← a0 + imm + C |
+| 00_001_000 | SUB t0 | a0 ← a0 - t0 |
 | 00_001_001 | SUBI imm | a0 ← a0 - imm |
+| 00_001_010 | SBC t0 | a0 ← a0 - t0 - !C |
+| 00_001_011 | SBCI imm | a0 ← a0 - imm - !C |
+| 00_010_000 | AND t0 | a0 ← a0 & t0 |
 | 00_010_001 | ANDI imm | a0 ← a0 & imm |
+| 00_011_000 | OR t0 | a0 ← a0 \| t0 |
 | 00_011_001 | ORI imm | a0 ← a0 \| imm |
+| 00_100_000 | XOR t0 | a0 ← a0 ^ t0 |
 | 00_100_001 | XORI imm | a0 ← a0 ^ imm |
-| 00_101_001 | CMPI imm | flags ← a0 - imm |
+| 00_101_000 | CMP t0 | flags ← a0 - t0 (no store) |
+| 00_101_001 | CMPI imm | flags ← a0 - imm (no store) |
+| 00_110_000 | INC | a0 ← a0 + 1 |
+| 00_110_010 | SHL | a0 ← a0 << 1, C ← old bit7 |
+| 00_111_000 | DEC | a0 ← a0 - 1 |
+| 00_111_001 | MOV t0,a0 | t0 ← a0 |
+| 00_111_010 | SHR | a0 ← a0 >> 1, C ← old bit0 |
 
-opcode[0] = 0: source is register (t0), 1: source is immediate (operand byte)
-opcode[5:3] wires directly to ALU op select (74HC283 carry + 74HC86 XOR control)
-
-### Class 01: Load/Store (opcode[5:3] = mode, opcode[2:0] = register)
+### Class 01: Load/Store (opcode[5:3] = mode, opcode[2:0] = register/modifier)
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
 | 01_000_000 | LI a0, imm | a0 ← imm |
 | 01_000_001 | LI t0, imm | t0 ← imm |
 | 01_000_010 | LI sp, imm | sp ← imm |
+| 01_000_011 | LI pl, imm | pl ← imm |
+| 01_000_100 | LI ph, imm | ph ← imm |
 | 01_001_000 | LB (ptr) | a0 ← RAM[{ph, pl}] |
-| 01_001_001 | SB (ptr) | RAM[{ph, pl}] ← a0 |
-| 01_010_000 | LI pl, imm | pl ← imm |
-| 01_010_001 | LI ph, imm | ph ← imm |
+| 01_010_000 | SB (ptr) | RAM[{ph, pl}] ← a0 |
 | 01_011_000 | LB zp:imm | a0 ← RAM[{$00, imm}] |
-| 01_011_001 | SB zp:imm | RAM[{$00, imm}] ← a0 |
+| 01_100_000 | SB zp:imm | RAM[{$00, imm}] ← a0 |
+| 01_101_000 | LB (ptr+) | a0 ← RAM[{ph,pl}], ptr++ |
+| 01_110_000 | MOV pl, a0 | pl ← a0 |
+| 01_110_001 | MOV ph, a0 | ph ← a0 |
 
-opcode[2:0] wires directly to register select mux.
-
-### Class 10: Branch/Jump (opcode[5:3] = condition)
+### Class 10: Branch/Jump (opcode[5:3] = condition, opcode[0] = modifier)
 
 | Opcode | Mnemonic | Condition |
 |:------:|----------|-----------|
-| 10_000_xxx | BEQ off | Z=1 |
-| 10_001_xxx | BNE off | Z=0 |
-| 10_010_xxx | BCS off | C=1 |
-| 10_011_xxx | BCC off | C=0 |
-| 10_100_xxx | BMI off | N=1 |
-| 10_101_xxx | BPL off | N=0 |
-| 10_110_xxx | BRA off | always |
-| 10_111_xxx | JMP imm | PC ← {ph, imm} |
-
-opcode[5:3] selects which flag to test — wires directly to a 74HC151 (8:1 mux) or 74HC153 (4:1 mux) that picks the condition.
+| 10_000_000 | BEQ off | Z=1 |
+| 10_001_000 | BNE off | Z=0 |
+| 10_010_000 | BCS off | C=1 |
+| 10_011_000 | BCC off | C=0 |
+| 10_100_000 | BMI off | N=1 |
+| 10_101_000 | BPL off | N=0 |
+| 10_110_000 | BRA off | always |
+| 10_111_000 | JMP imm | PC ← {ph, imm} |
+| 10_111_001 | JMP (ptr) | PC ← {ph, pl} |
 
 ### Class 11: System (opcode[5:3] = operation)
 
 | Opcode | Mnemonic | Operation |
 |:------:|----------|-----------|
-| 11_000_xxx | PUSH a0 | sp--, RAM[{$30,sp}] ← a0 |
-| 11_001_xxx | POP a0 | a0 ← RAM[{$30,sp}], sp++ |
-| 11_010_xxx | CALL imm | push PC, PC ← {ph, imm} |
-| 11_011_xxx | RET | pop PC |
-| 11_100_xxx | NOP | no operation |
-| 11_101_xxx | HLT | halt |
-| 11_110_xxx | EI | enable interrupts |
-| 11_111_xxx | DI | disable interrupts |
+| 11_000_000 | PUSH a0 | sp--, RAM[{$30,sp}] ← a0 |
+| 11_001_000 | POP a0 | a0 ← RAM[{$30,sp}], sp++ |
+| 11_010_000 | CALL imm | push PCL, PC ← {ph, imm} |
+| 11_011_000 | RET | PC ← {ph, pop PCL} |
+| 11_100_000 | NOP | no operation |
+| 11_101_000 | HLT | halt (loop until interrupt) |
+| 11_110_000 | EI | enable interrupts (IE←1) |
+| 11_111_000 | DI | disable interrupts (IE←0) |
 
 ---
 
-## 4. Total: 24 instructions
+## 4. ISA Summary
 
-Enough for BASIC:
-- ✅ Arithmetic (ADD, SUB, INC, DEC)
+**32 instructions total. All fit in 4 classes decoded by opcode[7:6].**
+
+Capabilities:
+- ✅ 8-bit arithmetic (ADD, SUB, INC, DEC)
+- ✅ 16-bit arithmetic (ADC, SBC carry chain)
 - ✅ Logic (AND, OR, XOR)
-- ✅ Compare + all branches
-- ✅ Load/Store (pointer, zero-page, immediate)
+- ✅ Shifts (SHL, SHR)
+- ✅ Compare + 7 branch conditions
+- ✅ Load/Store (pointer, zero-page, auto-increment)
+- ✅ Computed pointer (MOV pl/ph from a0)
+- ✅ Computed jump (JMP ptr)
+- ✅ Stack (PUSH, POP)
+- ✅ Subroutines (CALL, RET)
+- ✅ Interrupts (EI, DI, hardware NMI/IRQ)
+- ✅ Enough for: BASIC interpreter, video games, sound
+
+---
+
+## 5. Total: 32 instructions
+
+Enough for BASIC + games:
+- ✅ Arithmetic (ADD, SUB, ADC, SBC, INC, DEC)
+- ✅ Logic (AND, OR, XOR)
+- ✅ Shifts (SHL, SHR)
+- ✅ Compare + all branches + computed jump
+- ✅ Load/Store (pointer, zero-page, auto-increment)
+- ✅ Computed pointer (MOV pl/ph from a0)
 - ✅ Stack (PUSH, POP)
 - ✅ Subroutines (CALL, RET)
 - ✅ Interrupts (EI, DI + hardware NMI/IRQ)
