@@ -220,10 +220,10 @@ Part:{
         5:GND, 6:VCC, 7:/Y7, 8:GND,
         9:/Y6, 10:/Y5, 11:/Y4, 12:/Y3,
         13:/Y2, 14:/Y1, 15:/Y0, 16:VCC},
-    // /Y0-/Y3 → OR together → /RAM_CE (RAM.20)
-    // /Y4 → /IO_CE (to expansion bus)
-    // /Y5 → unused
-    // /Y6,/Y7 → OR together → /ROM_CE (ROM.20)
+    // /Y0+/Y1+/Y2+/Y3 → U23 OR gate → /RAM_CE → RAM pin 20
+    // /Y6+/Y7 → U23 OR gate → /ROM_CE → ROM pin 20
+    // /Y4 → /IO_CE → RV8-Bus pin 33 (directly, no gate needed)
+    // /Y5 → unused (float)
 
     // ═══════════════════════════════════════════
     // ROM — AT28C256 (32KB)
@@ -318,7 +318,7 @@ Part:{
         21:D4,  22:D5,  23:D6,  24:D7,
         25:/RD, 26:/WR, 27:CLK, 28:/CLR,
         29:/NMI,30:/IRQ,31:HALT,32:SYNC,
-        33:,    34:,    35:,    36:,
+        33:/IO_CE, 34:,  35:,   36:,
         37:,    38:,    39:VCC, 40:GND}
     }
 }
