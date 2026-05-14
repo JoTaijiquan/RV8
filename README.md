@@ -1,89 +1,76 @@
-# RV8: Minimal 8-bit CPU Family
+# RV8-G: Pure Gates 8-bit CPU Family
 
-Build real computers from 74HC chips on breadboards.
+Build a real computer from 74HC chips. **No EEPROM. No microcode. Pure logic gates.**
 
 ## CPU Variants
 
-| | RV801-B | RV8-G | RV808-G | RV8 | RV808 |
-|--|:---:|:---:|:---:|:---:|:---:|
-| **Chips** | **9** | 23 | **20** | 26 | 23 |
-| **Control** | Hardwired | **Gates** | **Gates** | EEPROM | EEPROM |
-| **Architecture** | Bit-serial | Von Neumann | Harvard | Von Neumann | Harvard |
-| **Instructions** | 68 | 25 | 22 | 68 | 67 |
-| **MIPS @ 10 MHz** | 0.5 | 2.5 | 3.0 | 4.0 | 2.86 |
-| **Run BASIC** | ⚠️ slow | ✅ | ✅ | ✅ | ✅ |
-| **Needs programmer** | No | **No** | **No** | Yes | Yes |
-| **Breadboards** | 1 | 3 | 2-3 | 4 | 3 |
-| **Cost** | ~$8 | ~$12 | ~$10 | ~$18 | ~$14 |
-| **Best for** | Ultra-minimal | Gates-only shared bus | **Gates-only Harvard** | Full power | Elegant paged |
+| | RV8-G | RV808-G |
+|--|:---:|:---:|
+| **Chips** | 23 | **20** |
+| **Architecture** | Von Neumann (shared bus) | Harvard (internal ROM) |
+| **Instructions** | 25 | 22 |
+| **Control** | Pure gates (5 chips) | Pure gates (5 chips) |
+| **MIPS @ 10 MHz** | 2.5 | **3.0** |
+| **Run BASIC** | ✅ | ✅ |
+| **Play games** | ✅ | ✅ |
+| **Needs programmer** | No (only ROM) | No (only ROM) |
+| **Breadboards** | 3 | 2-3 |
+| **Cost** | ~$12 | ~$10 |
+
+## The Constraint
+
+> No EEPROM for control. No GAL/PAL. No microcode.
+> Opcode bits ARE control signals — wired directly to hardware.
+> If you can wire a breadboard, you can build a computer.
 
 ## Project Structure
 
 ```
 RV8/
-├── RV8/            ← RV8 CPU (26 chips, Von Neumann, EEPROM) — DONE
-├── RV801/          ← RV801 CPU (8-9 chips, bit-serial) — spec done
-├── RV808/          ← RV808 CPU (23 chips, Harvard, EEPROM) — DONE
-├── RV8G/           ← RV8-G CPU (23 chips, Von Neumann, gates-only) — DONE
-├── RV808G/         ← RV808-G CPU (20 chips, Harvard, gates-only) — design
-├── Programmer/     ← ESP32 programmer board — DONE
-├── Trainer/        ← Trainer board (SBC style) — planned
-├── Computer/       ← Full PC board — planned
-├── Rom/            ← System ROM (BASIC + monitor) — planned
-├── Reference/      ← Study designs (6502, RISC-V)
+├── RV8G/           ← RV8-G (23 chips, shared bus, gates-only)
+├── RV808G/         ← RV808-G (20 chips, Harvard, gates-only)
+├── Programmer/     ← ESP32 programmer board (flash ROM + terminal)
+├── Trainer/        ← Trainer board (step, LEDs, keyboard)
+├── Old_Design/     ← Archived: RV8(26), RV801(9), RV808(23) — need EEPROM
+├── CHANGELOG.md
+├── HISTORY.md
 └── README.md
 ```
 
 ## Quick Start
 
 ```bash
-# Simulate RV8
-cd RV8/sim && make all
+# Simulate RV8-G
+cd RV8G && iverilog -o tb rv8g_cpu.v tb/tb_rv8g_cpu.v && vvp tb
 
-# Simulate RV808
-cd RV808 && iverilog -o tb rv808_cpu.v tb/tb_rv808_cpu.v && vvp tb
+# Flash a program (with Programmer board)
+python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 program.bin
 
-# Assemble a program (RV8)
-python3 RV8/tools/rv8asm.py RV8/programs/fib.asm -f bin -o fib.bin
+# Terminal mode
+python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 ```
 
-## Which variant to build?
+## Which to build?
 
-| Your goal | Build this |
-|-----------|-----------|
-| Fewest chips, learn basics | **RV801-B** (9 chips, 1 breadboard) |
-| Pure gates, no programmer needed | **RV808-G** (20 chips, 2 breadboards) |
-| Understand parallel bus architecture | **RV8-G** (23 chips, 3 breadboards) |
-| Full-speed, maximum instructions | **RV8** (26 chips, 4 breadboards) |
-| Elegant paged design | **RV808** (23 chips, 3 breadboards) |
-
-## The Philosophy
-
-> **RV801** — A CPU can be incredibly simple.
-> **RV8-G / RV808-G** — A computer needs no programmable logic.
-> **RV8** — How a CPU works.
-> **RV808** — How to design one.
-
-## Documentation
-
-| Variant | Docs | Verilog | Tests |
-|---------|:----:|:-------:|:-----:|
-| RV8 | `RV8/doc/` (12 labs, Thai+English) | ✅ 69/69 pass | ✅ |
-| RV808 | `RV808/doc/` (8 labs, Thai+English) | ✅ 44/44 pass | ✅ |
-| RV8-G | `RV8G/doc/` (design + control trace) | ✅ 17/17 pass | ✅ |
-| RV808-G | `RV808G/doc/` (design) | ⬜ | ⬜ |
-| RV801 | `RV801/` (spec + circuit) | ⬜ | ⬜ |
+| Your goal | Build |
+|-----------|-------|
+| Understand shared-bus CPU | **RV8-G** (23 chips, pointer addressing) |
+| Minimum chips, fastest | **RV808-G** (20 chips, page:offset) |
 
 ## Status
 
-| Board | Status |
-|-------|:------:|
-| RV8 CPU (26 chips) | ✅ Designed + simulated |
-| RV808 CPU (23 chips) | ✅ Designed + simulated |
-| RV8-G CPU (23 chips, gates) | ✅ Designed + simulated |
-| RV808-G CPU (20 chips, gates) | 🔧 Design done |
-| RV801-B (9 chips) | 🔧 Spec done |
-| Programmer board | ✅ Complete (ESP32 + level shifters) |
-| Trainer board | 🔧 Design done |
-| Full PC board | ⬜ Planned |
-| System ROM (BASIC) | ⬜ Planned |
+| Item | Status |
+|------|:------:|
+| RV8-G Verilog (17/17 pass) | ✅ |
+| RV8-G control trace (proven) | ✅ |
+| RV808-G design doc | ✅ |
+| RV808-G Verilog | ⬜ |
+| Programmer board | ✅ |
+| Assembler | ⬜ |
+| Build guide (labs) | ⬜ |
+| BASIC interpreter | ⬜ |
+| Breadboard build | ⬜ |
+
+## The Philosophy
+
+> **RV8-G**: A computer needs no programmable logic — just gates, wires, and ROM for your program.
