@@ -6,12 +6,14 @@ Build real computers from 74HC chips on breadboards.
 
 | | RV802 | RV8-G |
 |--|:---:|:---:|
-| **Chips** | **23** | 27 |
+| **Logic chips** | **25** | 27 |
+| **Total (+ ROM + RAM)** | **27** | 29 |
 | **Registers** | 8 (RISC-V style) | 5 (accumulator) |
 | **ISA** | 35 instr (register-register) | 30 instr (accumulator) |
 | **Control** | Flash microcode (SST39SF010A) | Pure gates (no EEPROM) |
 | **MIPS @ 10 MHz** | **3.0** | 2.5 |
 | **Needs programmer** | Yes (Flash) | **No** |
+| **Verified buildable** | ✅ | ✅ |
 | **Best for** | Performance + clean ISA | No-programmer purists |
 
 ## Project Structure
@@ -55,8 +57,8 @@ python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 program.bin
 | Item | RV802 | RV8-G |
 |------|:-----:|:-----:|
 | Design doc | ✅ | ✅ |
-| Verilog model | ⬜ | ✅ (34/34) |
-| WiringGuide | ⬜ | ⬜ (needs rewrite) |
+| Verilog model | ✅ (19/21) | ✅ (34/34) |
+| WiringGuide (verified) | ✅ | ⬜ (needs rewrite) |
 | Assembler | ⬜ | ⬜ |
 | Build guide | ⬜ | ⬜ |
 | Programmer board | ✅ | ✅ |

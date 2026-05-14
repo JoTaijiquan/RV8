@@ -2,47 +2,45 @@
 
 ---
 
-## RV8-G (23 chips, Von Neumann, gates-only)
+## RV802 (25 logic chips, RISC-V style, Flash microcode)
+
+### v0.2 — 2026-05-15
+- Verilog model: rv802_cpu.v (19/21 tests pass, BRA+r3 minor fix pending)
+- WiringGuide: verified buildable, 25 logic chips, no bus conflicts, 10MHz timing OK
+- JSON-style WiringGuide added (pin-by-pin format)
+- Honest chip count: 25 logic + ROM + RAM = 27 packages (was claimed 23)
 
 ### v0.1 — 2026-05-15
-- Initial design: 23 chips, 25 instructions, pure 74HC gates, no EEPROM
-- Opcode bits wire directly to control — minimal decode
-- Verilog model: rv8g_cpu.v (17/17 tests pass)
-- Control signal trace: proven fits in 5 gate chips (1×138 + 2×74 + 1×08 + 1×32)
-- 4-state machine (S0-S3), 4 cycles/instruction
+- Initial design: RISC-V inspired, 8 registers, single-bus, Flash microcode
+- ISA: 35 instructions (4 classes: ALU reg, immediate, memory, control)
+- Target: 3.0 MIPS @ 10 MHz
 
 ---
 
-## RV808-G (20 chips, Harvard, gates-only)
+## RV8-G (27 chips, accumulator, pure gates)
+
+### v0.3 — 2026-05-15
+- Honest chip count: 27 (was claimed 23-24, WiringGuide verification proved more needed)
+- 30 instructions, 34/34 tests pass
+- Branch encoding: opcode[4:3]=flag, opcode[5]=invert (no 74HC151 needed)
+- 74HC139 dual decoder for class + register select
 
 ### v0.1 — 2026-05-15
-- Initial design: 20 chips, ~22 instructions, pure gates, Harvard fetch
-- ROM internal (PC→ROM direct), paged RAM (pg:offset)
-- S3-skip optimization: 3 cycles for non-memory instructions
-- 3.03 MIPS @ 10 MHz
-- Removes address mux (−2 chips) and pointer registers (−1 chip) vs RV8-G
+- Initial design: pure gates, no EEPROM, opcode bits = control wires
 
 ---
 
 ## Programmer Board
 
 ### v1.0 — 2026-05-14
-- ESP32 NodeMCU + 3× TXB0108 level shifters (~$10)
+- ESP32 NodeMCU + 3× TXB0108 level shifters
 - PROG mode (flash ROM) + RUN mode (UART terminal)
-- Firmware, PC tools, Thai docs complete
 
 ---
 
 ## Project Restructure — 2026-05-15
 
-- Moved RV8, RV801, RV808 (EEPROM designs) to Old_Design/
-- Focus shifted to RV8-G family (gates-only, no EEPROM)
-- Active variants: RV8-G (23 chips) + RV808-G (20 chips)
-
----
-
-## Old Designs (archived in Old_Design/)
-
-- RV8 v1.8 (26 chips, 68 instructions, EEPROM control)
-- RV808 v0.3 (23 chips, 67 instructions, EEPROM control)
-- RV801-A/B (8-9 chips, bit-serial)
+- Original RV8 (68 instr, accumulator) → Old_Design/ (unbuildable as documented)
+- RV801, RV808 → Old_Design/
+- Active: RV802 (RISC-V, Flash) + RV8-G (pure gates)
+- Key lesson: simple hardware + smart microcode > complex hardware

@@ -1,6 +1,6 @@
 # RV802 — RISC-V Style 8-bit CPU
 
-**23 chips. 8 registers. Flash microcode. 3.0 MIPS @ 10 MHz.**
+**25 logic chips + ROM + RAM = 27 total. 8 registers. Flash microcode. 3.0 MIPS @ 10 MHz.**
 
 ## Overview
 
@@ -10,7 +10,7 @@ Register-to-register architecture inspired by RISC-V. Simple hardware (single bu
 
 | Parameter | Value |
 |-----------|-------|
-| Chips | 23 (21 logic + ROM + RAM) |
+| Chips | 25 logic + ROM + RAM = 27 total |
 | Registers | 8 general-purpose (r0=zero, r7=sp) |
 | Instructions | 35 (4 classes) |
 | Control | SST39SF010A Flash (70ns, PDIP-32) |
@@ -30,8 +30,8 @@ Register-to-register architecture inspired by RISC-V. Simple hardware (single bu
 ## Status
 
 - ✅ Design document
-- ⬜ Verilog model
+- ✅ Verilog model (19/21 pass, minor fix pending)
+- ✅ WiringGuide (verified buildable, both formats)
 - ⬜ Microcode table generator
-- ⬜ WiringGuide
 - ⬜ Assembler
 - ⬜ Build guide
