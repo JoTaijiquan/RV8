@@ -70,6 +70,7 @@ Bus:{
 
     // === INSTRUCTION DECODE (from U18) ===
     exec_phase: Execute phase active — from state logic → U18 pin 6 (G1),
+    // U18 inputs: A=U5.17(op5), B=U5.18(op6), C=U5.19(op7)
     /Y0_u18: Unit 0 (ALU reg) — U18 pin 15,
     /Y1_u18: Unit 1 (ALU imm) — U18 pin 14,
     /Y2_u18: Unit 2 (Load/Store) — U18 pin 13,
@@ -80,8 +81,10 @@ Bus:{
     /Y7_u18: Unit 7 (System) — U18 pin 7,
 
     // === ALU INTERNAL ===
-    sub_mode : SUB/CMP active — from decode → U15 pin 2/5/10/13 (XOR invert),
+    sub_mode : SUB/CMP active — from decode → U15 pin 2/5/10/13 (XOR B input),
     carry_in : ALU carry input — 0 for ADD / 1 for SUB → U13 pin 7,
+    // ALU A inputs: a0 bits from U7 pins 12-19
+    // ALU B inputs: operand bits from U6 pins 12-19 (via U15 XOR for SUB)
 
     // === BUS BUFFER CONTROL ===
     bus_dir  : Data bus direction — from control → U19 pin 1 (HIGH=read LOW=write),
@@ -130,16 +133,38 @@ Part:{
     U5:{type:74HC574, function:"IR opcode",
         1:GND, 2:D0, 3:D1, 4:D2,
         5:D3, 6:D4, 7:D5, 8:D6,
-        9:D7, 10:GND, 11:U22.3, 12:OP0,
-        13:OP1, 14:OP2, 15:OP3, 16:OP4,
-        17:OP5, 18:OP6, 19:OP7, 20:VCC},
+        9:D7, 10:GND, 11:ir0_clk, 12:,
+        13:, 14:, 15:, 16:,
+        17:U18.1, 18:U18.2, 19:U18.3, 20:VCC},
+    // pin 1 (/OE) = GND (always output)
+    // pin 11 (CLK) = ir0_clk (from U22.3)
+    // pin 12 (Q0) = opcode bit 0 → decode logic (op within unit)
+    // pin 13 (Q1) = opcode bit 1 → decode logic
+    // pin 14 (Q2) = opcode bit 2 → decode logic
+    // pin 15 (Q3) = opcode bit 3 → decode logic
+    // pin 16 (Q4) = opcode bit 4 → decode logic
+    // pin 17 (Q5) = opcode bit 5 → U18 pin 1 (A) — unit select
+    // pin 18 (Q6) = opcode bit 6 → U18 pin 2 (B) — unit select
+    // pin 19 (Q7) = opcode bit 7 → U18 pin 3 (C) — unit select
 
     U6:{type:74HC574, function:"IR operand",
         1:GND, 2:D0, 3:D1, 4:D2,
         5:D3, 6:D4, 7:D5, 8:D6,
-        9:D7, 10:GND, 11:U22.6, 12:OPR0,
-        13:OPR1, 14:OPR2, 15:OPR3, 16:OPR4,
-        17:OPR5, 18:OPR6, 19:OPR7, 20:VCC},
+        9:D7, 10:GND, 11:ir1_clk, 12:U15.1,
+        13:U15.4, 14:U15.9, 15:U15.12, 16:,
+        17:, 18:, 19:, 20:VCC},
+    // pin 1 (/OE) = GND (always output)
+    // pin 11 (CLK) = ir1_clk (from U22.6)
+    // pin 12 (Q0) = operand bit 0 → U15.1 (XOR gate A input) → ALU B0
+    // pin 13 (Q1) = operand bit 1 → U15.4 (XOR gate A input) → ALU B1
+    // pin 14 (Q2) = operand bit 2 → U15.9 (XOR gate A input) → ALU B2
+    // pin 15 (Q3) = operand bit 3 → U15.12 (XOR gate A input) → ALU B3
+    // pin 16 (Q4) = operand bit 4 → ALU B4 (needs 2nd XOR chip or direct)
+    // pin 17 (Q5) = operand bit 5 → ALU B5
+    // pin 18 (Q6) = operand bit 6 → ALU B6
+    // pin 19 (Q7) = operand bit 7 → ALU B7
+    // ALL Q0-Q7 also → address mux (U16/U17) for immediate addressing
+    // ALL Q0-Q7 also → PC load data (for branch offset)
 
     // ═══════════════════════════════════════════
     // REGISTERS — 74HC574 ×4 (U7-U10)
