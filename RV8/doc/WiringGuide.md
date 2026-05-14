@@ -189,27 +189,44 @@ Part:{
         9:flag_c, 10:VCC, 11:flags_clk, 12:carry_out,
         13:/CLR, 14:VCC},
 
-    U21:{type:74HC74, function:"N flag + state",
+    U21:{type:74HC74, function:"N flag + state toggle",
         1:/CLR, 2:alu_sign, 3:flags_clk, 4:VCC,
-        5:flag_n, 6:flag_n_n, 7:GND, 8:state_n,
-        9:state, 10:VCC, 11:CLK, 12:state_next,
+        5:flag_n, 6:, 7:GND, 8:state_F0,
+        9:state_F1, 10:VCC, 11:CLK, 12:U21.8,
         13:/CLR, 14:VCC},
+    // FF1 (pins 1-6): N flag — D=ALU result bit 7, Q=flag_n
+    // FF2 (pins 8-13): State toggle — D=/Q (pin 8 fed back to pin 12)
+    //   pin 9 (Q2)  = state_F1 → U22.5, U23.2
+    //   pin 8 (/Q2) = state_F0 → U22.2, U23.1
 
     // ═══════════════════════════════════════════
     // CONTROL LOGIC — 74HC08 + 74HC32 (U22-U23)
     // ═══════════════════════════════════════════
 
     U22:{type:74HC08, function:"AND gates (clock gating)",
-        1:CLK, 2:state_F0, 3:ir0_clk, 4:CLK,
-        5:state_F1, 6:ir1_clk, 7:GND, 8:skip_gate,
-        9:write_en, 10:not_skip, 11:int_gate, 12:nmi_pend,
-        13:not_skip, 14:VCC},
-
-    U23:{type:74HC32, function:"OR gates (signal combining)",
-        1:state_F0, 2:state_F1, 3:pc_inc, 4:state_M1,
-        5:state_M2, 6:data_access, 7:GND, 8:,
+        1:CLK, 2:U21.8, 3:U5.11, 4:CLK,
+        5:U21.9, 6:U6.11, 7:GND, 8:,
         9:, 10:, 11:, 12:,
         13:, 14:VCC},
+    // pin 1,2→3: CLK AND state_F0(/Q2) = ir0_clk → U5 CLK (latch opcode)
+    // pin 4,5→6: CLK AND state_F1(Q2)  = ir1_clk → U6 CLK (latch operand)
+    // pin 9,10→8: (spare, for future control)
+    // pin 12,13→11: (spare)
+
+    U23:{type:74HC32, function:"OR gates (signal combining)",
+        1:U21.8, 2:U21.9, 3:pc_inc, 4:U24.11,
+        5:U24.10, 6:/ROM_CE, 7:GND, 8:,
+        9:, 10:, 11:, 12:,
+        13:, 14:VCC},
+    // pin 1,2→3: state_F0 OR state_F1 = pc_inc → U1.7, U1.10, U2.7, U3.7, U4.7
+    // pin 4,5→6: /Y4 OR /Y5 = (not used, example)
+    //            Actually: /Y6 OR /Y7 → /ROM_CE → ROM pin 20
+    // pin 9,10→8: /Y0 OR /Y1 (partial /RAM_CE, need more gates)
+    // pin 12,13→11: (spare)
+
+    // NOTE: Full 17-state machine needs additional state bits.
+    // For basic 2-cycle (F0/F1) build, U21 FF2 toggles each clock.
+    // For full CPU, state counter or additional 74HC74 required.
 
     // ═══════════════════════════════════════════
     // ADDRESS DECODE — 74HC138 (U24)
