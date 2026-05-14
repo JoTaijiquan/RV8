@@ -46,8 +46,10 @@ function [8:0] alu_calc;
             3'd3: alu_calc = {1'b0, a | b};                         // OR
             3'd4: alu_calc = {1'b0, a ^ b};                         // XOR
             3'd5: alu_calc = {1'b0, a} - {1'b0, b};                // CMP (no carry)
-            3'd6: alu_calc = {1'b0, a} + 9'd1;                     // INC
-            3'd7: alu_calc = {1'b0, a} - 9'd1;                     // DEC
+            3'd6: alu_calc = ci ? {a[7], a[6:0], 1'b0} :         // ci=1: SHL, ci=0: INC
+                             {1'b0, a} + 9'd1;
+            3'd7: alu_calc = ci ? {a[0], 1'b0, a[7:1]} :         // ci=1: SHR, ci=0: DEC
+                             {1'b0, a} - 9'd1;
             default: alu_calc = 9'd0;
         endcase
     end
@@ -106,12 +108,17 @@ always @(posedge clk or negedge rst_n) begin
 
             case (ir_op[7:6])
             // --- Class 00: ALU ---
-            // ir_op[5:3]=operation, ir_op[0]=immediate, ir_op[1]=use_carry
+            // ir_op[5:3]=operation, ir_op[0]=immediate, ir_op[1]=carry/shift mode
             2'b00: begin
+                // ci: for ADD/SUB(op 0,1) bit[1]=1 means use flag_c
+                //     for INC/DEC/SHL/SHR(op 6,7) bit[1]=1 means shift mode
+                //     for others: 0
                 if (ir_op[0]) // immediate mode
-                    alu_result = alu_calc(a0, data_in, ir_op[5:3], ir_op[1] ? flag_c : 1'b0);
+                    alu_result = alu_calc(a0, data_in, ir_op[5:3],
+                        (ir_op[5:3] <= 3'd1) ? (ir_op[1] ? flag_c : 1'b0) : ir_op[1]);
                 else // register mode (t0)
-                    alu_result = alu_calc(a0, t0, ir_op[5:3], ir_op[1] ? flag_c : 1'b0);
+                    alu_result = alu_calc(a0, t0, ir_op[5:3],
+                        (ir_op[5:3] <= 3'd1) ? (ir_op[1] ? flag_c : 1'b0) : ir_op[1]);
 
                 // Special: op=7, modf[0]=1 → MOV t0,a0
                 if (ir_op[5:3] == 3'd7 && ir_op[0]) begin

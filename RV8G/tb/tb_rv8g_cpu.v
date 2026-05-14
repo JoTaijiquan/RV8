@@ -304,6 +304,22 @@ initial begin
     run(30);
     check(uut.a0, 8'h99, "JMP (ptr)");
 
+    // ===== SHL =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'h25; // 0010_0101
+    mem[16'hC002] = 8'b00_110_010;  mem[16'hC003] = 8'h00; // SHL (op=6, bit1=1)
+    mem[16'hC004] = HLT;            mem[16'hC005] = 8'h00;
+    run(20);
+    check(uut.a0, 8'h4A, "SHL ($25<<1=$4A)");
+
+    // ===== SHR =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'h4A; // 0100_1010
+    mem[16'hC002] = 8'b00_111_010;  mem[16'hC003] = 8'h00; // SHR (op=7, bit1=1)
+    mem[16'hC004] = HLT;            mem[16'hC005] = 8'h00;
+    run(20);
+    check(uut.a0, 8'h25, "SHR ($4A>>1=$25)");
+
     // ===== RESULTS =====
     $display("");
     $display("========================================");
