@@ -11,7 +11,18 @@ Bus:{
     /RD  : Memory read,
     /WR  : Memory write,
     SYNC : Instruction start pulse,
-    HALT : CPU halted
+    HALT : CPU halted,
+    /RAM_CE : RAM chip enable (active when A[15:13]=000-011 → $0000-$7FFF),
+    /ROM_CE : ROM chip enable (active when A[15:13]=110-111 → $C000-$FFFF),
+    /IO_CE  : I/O chip enable (active when A[15:13]=100 → $8000-$9FFF),
+    /Y0  : U24 decode — A[15:13]=000 → RAM $0000-$1FFF,
+    /Y1  : U24 decode — A[15:13]=001 → RAM $2000-$3FFF,
+    /Y2  : U24 decode — A[15:13]=010 → RAM $4000-$5FFF,
+    /Y3  : U24 decode — A[15:13]=011 → RAM $6000-$7FFF,
+    /Y4  : U24 decode — A[15:13]=100 → I/O $8000-$9FFF,
+    /Y5  : U24 decode — A[15:13]=101 → (unused),
+    /Y6  : U24 decode — A[15:13]=110 → ROM $C000-$DFFF,
+    /Y7  : U24 decode — A[15:13]=111 → ROM $E000-$FFFF
     },
 
 Part:{
@@ -209,17 +220,21 @@ Part:{
         5:GND, 6:VCC, 7:/Y7, 8:GND,
         9:/Y6, 10:/Y5, 11:/Y4, 12:/Y3,
         13:/Y2, 14:/Y1, 15:/Y0, 16:VCC},
+    // /Y0-/Y3 → OR together → /RAM_CE (RAM.20)
+    // /Y4 → /IO_CE (to expansion bus)
+    // /Y5 → unused
+    // /Y6,/Y7 → OR together → /ROM_CE (ROM.20)
 
     // ═══════════════════════════════════════════
     // ROM — AT28C256 (32KB)
     // ═══════════════════════════════════════════
 
-    ROM:{type:AT28C256, function:"Program ROM 32KB",
+    ROM:{type:AT28C256, function:"Program ROM 32KB ($C000-$FFFF)",
         1:A14, 2:A12, 3:A7, 4:A6,
         5:A5, 6:A4, 7:A3, 8:A2,
         9:A1, 10:A0, 11:D0, 12:D1,
         13:D2, 14:GND, 15:D3, 16:D4,
-        17:D5, 18:D6, 19:D7, 20:rom_ce,
+        17:D5, 18:D6, 19:D7, 20:/ROM_CE,
         21:A10, 22:/RD, 23:A11, 24:A9,
         25:A8, 26:A13, 27:VCC, 28:VCC},
 
@@ -227,12 +242,12 @@ Part:{
     // RAM — 62256 (32KB)
     // ═══════════════════════════════════════════
 
-    RAM:{type:62256, function:"Data RAM 32KB",
+    RAM:{type:62256, function:"Data RAM 32KB ($0000-$7FFF)",
         1:A14, 2:A12, 3:A7, 4:A6,
         5:A5, 6:A4, 7:A3, 8:A2,
         9:A1, 10:A0, 11:D0, 12:D1,
         13:D2, 14:GND, 15:D3, 16:D4,
-        17:D5, 18:D6, 19:D7, 20:ram_ce,
+        17:D5, 18:D6, 19:D7, 20:/RAM_CE,
         21:A10, 22:/RD, 23:A11, 24:A9,
         25:A8, 26:A13, 27:/WR, 28:VCC},
 
