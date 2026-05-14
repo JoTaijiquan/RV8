@@ -1,6 +1,8 @@
-# RV8-G — Gates-Only CPU Design
+# RV8-G — Gates-Only CPU Design (Von Neumann, shared bus)
 
 **Constraint**: No EEPROM/microcode. Pure 74HC gates. Run BASIC + games. Minimum chips.
+**Relationship**: Gates-only variant of RV8 (shared bus, pointer registers)
+**Sister variant**: RV808-G (gates-only Harvard, 20 chips)
 
 ---
 
