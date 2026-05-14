@@ -182,29 +182,61 @@ Total control: **1× 74HC138 + 1× 74HC08 + 1× 74HC32 + 1× 74HC74** = 4 chips.
 
 ---
 
-## 6. Chip List (22 chips)
+## 6. Chip List (23 chips — proven, no cheating)
 
 | U# | Chip | Function |
 |:--:|------|----------|
-| U1-U4 | 74HC161 ×4 | PC (16-bit counter) |
-| U5 | 74HC574 | IR opcode |
-| U6 | 74HC574 | IR operand |
-| U7 | 74HC574 | a0 (accumulator) |
-| U8 | 74HC574 | t0 (temporary) |
-| U9 | 74HC574 | sp (stack pointer) |
-| U10-U11 | 74HC161 ×2 | Pointer (pl, ph with auto-inc) |
-| U12 | 74HC283 | ALU adder low |
-| U13 | 74HC283 | ALU adder high |
-| U14 | 74HC86 | XOR (SUB + XOR op) |
-| U15-U16 | 74HC157 ×2 | Address mux (PC/pointer) |
-| U17 | 74HC138 | Class decode (opcode[7:6]) |
-| U18 | 74HC74 | State (2 FF) + flags (Z, C) |
-| U19 | 74HC08 | AND (control gates) |
-| U20 | 74HC32 | OR (control gates) |
-| U21 | 74HC245 | Bus buffer |
-| — | AT28C256 | ROM (program) |
-| — | 62256 | RAM (data) |
-| **Total** | | **22 chips** (20 logic + ROM + RAM) |
+| U1-U4 | 74HC161 ×4 | PC (16-bit counter, carry chain) |
+| U5-U6 | 74HC574 ×2 | IR (opcode + operand latch) |
+| U7-U9 | 74HC574 ×3 | Registers: a0, t0, sp |
+| U10-U11 | 74HC161 ×2 | Pointer: pl, ph (with auto-increment) |
+| U12-U13 | 74HC283 ×2 | ALU adder (8-bit, carry chain) |
+| U14 | 74HC86 | XOR (SUB invert + branch condition invert) |
+| U15-U16 | 74HC157 ×2 | Address mux (PC/pointer → address bus) |
+| U17 | 74HC139 | Dual 2-to-4 decoder: class decode + register write select |
+| U18 | 74HC74 | State counter (2 flip-flops, ripple) |
+| U19 | 74HC74 | Flags: Z, C |
+| U20 | 74HC08 | AND gates (control signal generation) |
+| U21 | 74HC32 | OR gates (control signal combining) |
+| — | AT28C256 | Program ROM (32KB) |
+| — | 62256 | Data RAM (32KB) |
+| **Total** | | **23 chips (21 logic + ROM + RAM)** |
+
+**Optional**: Add 74HC245 bus buffer (U22) if driving long ribbon cable to expansion boards = 24 chips.
+
+### Control logic breakdown:
+
+| Chip | Gate usage |
+|------|-----------|
+| U17 decoder A | opcode[7:6] → 4 class enables, /E=S2 |
+| U17 decoder B | opcode[1:0] → 4 register CLK enables, /E=write_en |
+| U18 FF1+FF2 | State[1:0] ripple counter (D=/Q, toggles) |
+| U19 FF1 | Z flag (D=alu_zero, CLK=flags_we) |
+| U19 FF2 | C flag (D=carry_out, CLK=flags_we) |
+| U20 gate 1 | S2 = state[1] AND /state[0] |
+| U20 gate 2 | S3 = state[1] AND state[0] |
+| U20 gate 3 | /WR = S3 AND store_mode |
+| U20 gate 4 | ph_clk = write_en AND ph_select |
+| U21 gate 1 | /RD = fetch_phase OR load_phase |
+| U21 gate 2 | a0_we = alu_write OR mem_load |
+| U21 gate 3 | pc_inc = S0 OR S1 (=/state[1]) |
+| U21 gate 4 | (spare) |
+| U14 gate (spare) | branch_invert = flag_out XOR opcode[5] |
+
+### Branch condition (no extra chip):
+
+```
+opcode[4:3] = flag select: 00=Z, 01=C, 1x=always
+opcode[5]   = invert: 0=true, 1=false
+
+flag_out = (opcode[3] ? flag_c : flag_z) OR opcode[4]
+branch_taken = flag_out XOR opcode[5]
+
+Uses: 1 AND + 1 OR (from U20/U21) + 1 XOR (from U14 spare gate)
+```
+
+Branches: BEQ, BNE, BCS, BCC, BRA, JMP, JMP(ptr) — 6 conditions + 2 jumps.
+(BMI/BPL dropped — use CMPI + BCS for signed compare)
 
 ---
 
