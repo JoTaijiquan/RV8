@@ -256,6 +256,54 @@ initial begin
     run(50);
     check(uut.a0, 8'h77, "CALL/RET");
 
+    // ===== ADC (add with carry) =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'hFF;
+    mem[16'hC002] = 8'b00_000_001;  mem[16'hC003] = 8'h01; // ADDI 1 → a0=0, C=1
+    mem[16'hC004] = LI_A0;          mem[16'hC005] = 8'h05;
+    mem[16'hC006] = 8'b00_000_011;  mem[16'hC007] = 8'h00; // ADCI 0 (add carry) → a0=5+0+1=6
+    mem[16'hC008] = HLT;            mem[16'hC009] = 8'h00;
+    run(32);
+    check(uut.a0, 8'h06, "ADC (carry propagation)");
+
+    // ===== SBC (subtract with borrow) =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'h00;
+    mem[16'hC002] = 8'b00_001_001;  mem[16'hC003] = 8'h01; // SUBI 1 → a0=FF, C=1(borrow)
+    mem[16'hC004] = LI_A0;          mem[16'hC005] = 8'h10;
+    mem[16'hC006] = 8'b00_001_011;  mem[16'hC007] = 8'h00; // SBCI 0 (sub borrow) → 10-0-1=0F
+    mem[16'hC008] = HLT;            mem[16'hC009] = 8'h00;
+    run(32);
+    check(uut.a0, 8'h0F, "SBC (borrow propagation)");
+
+    // ===== MOV pl, a0 =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'h42;
+    mem[16'hC002] = 8'b01_110_000;  mem[16'hC003] = 8'h00; // MOV pl, a0
+    mem[16'hC004] = HLT;            mem[16'hC005] = 8'h00;
+    run(20);
+    check(uut.pl, 8'h42, "MOV pl, a0");
+
+    // ===== MOV ph, a0 =====
+    reset_cpu;
+    mem[16'hC000] = LI_A0;          mem[16'hC001] = 8'h80;
+    mem[16'hC002] = 8'b01_110_001;  mem[16'hC003] = 8'h00; // MOV ph, a0
+    mem[16'hC004] = HLT;            mem[16'hC005] = 8'h00;
+    run(20);
+    check(uut.ph, 8'h80, "MOV ph, a0");
+
+    // ===== JMP (ptr) =====
+    reset_cpu;
+    mem[16'hC000] = LI_PH;          mem[16'hC001] = 8'hC0;
+    mem[16'hC002] = LI_PL;          mem[16'hC003] = 8'h20;
+    mem[16'hC004] = 8'b10_111_001;  mem[16'hC005] = 8'h00; // JMP (ptr) → $C020
+    mem[16'hC006] = LI_A0;          mem[16'hC007] = 8'hFF; // skipped
+    mem[16'hC008] = HLT;            mem[16'hC009] = 8'h00;
+    mem[16'hC020] = LI_A0;          mem[16'hC021] = 8'h99;
+    mem[16'hC022] = HLT;            mem[16'hC023] = 8'h00;
+    run(30);
+    check(uut.a0, 8'h99, "JMP (ptr)");
+
     // ===== RESULTS =====
     $display("");
     $display("========================================");

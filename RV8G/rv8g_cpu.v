@@ -37,16 +37,17 @@ wire [2:0] modf   = ir_op[2:0];  // modifier/register select
 function [8:0] alu_calc;
     input [7:0] a, b;
     input [2:0] op;
+    input       ci; // carry in
     begin
         case (op)
-            3'd0: alu_calc = {1'b0, a} + {1'b0, b};       // ADD
-            3'd1: alu_calc = {1'b0, a} - {1'b0, b};       // SUB
-            3'd2: alu_calc = {1'b0, a & b};                // AND
-            3'd3: alu_calc = {1'b0, a | b};                // OR
-            3'd4: alu_calc = {1'b0, a ^ b};                // XOR
-            3'd5: alu_calc = {1'b0, a} - {1'b0, b};       // CMP (same as SUB, no store)
-            3'd6: alu_calc = {1'b0, a} + 9'd1;            // INC
-            3'd7: alu_calc = {1'b0, a} - 9'd1;            // DEC / MOV(pass b)
+            3'd0: alu_calc = {1'b0, a} + {1'b0, b} + {8'd0, ci};  // ADD/ADC
+            3'd1: alu_calc = {1'b0, a} - {1'b0, b} - {8'd0, ci};  // SUB/SBC
+            3'd2: alu_calc = {1'b0, a & b};                         // AND
+            3'd3: alu_calc = {1'b0, a | b};                         // OR
+            3'd4: alu_calc = {1'b0, a ^ b};                         // XOR
+            3'd5: alu_calc = {1'b0, a} - {1'b0, b};                // CMP (no carry)
+            3'd6: alu_calc = {1'b0, a} + 9'd1;                     // INC
+            3'd7: alu_calc = {1'b0, a} - 9'd1;                     // DEC
             default: alu_calc = 9'd0;
         endcase
     end
@@ -105,15 +106,16 @@ always @(posedge clk or negedge rst_n) begin
 
             case (ir_op[7:6])
             // --- Class 00: ALU ---
+            // ir_op[5:3]=operation, ir_op[0]=immediate, ir_op[1]=use_carry
             2'b00: begin
                 if (ir_op[0]) // immediate mode
-                    alu_result = alu_calc(a0, data_in, ir_op[5:3]);
+                    alu_result = alu_calc(a0, data_in, ir_op[5:3], ir_op[1] ? flag_c : 1'b0);
                 else // register mode (t0)
-                    alu_result = alu_calc(a0, t0, ir_op[5:3]);
+                    alu_result = alu_calc(a0, t0, ir_op[5:3], ir_op[1] ? flag_c : 1'b0);
 
-                // Special: op=7, modf[0]=1 → MOV t0,a0 (pass)
+                // Special: op=7, modf[0]=1 → MOV t0,a0
                 if (ir_op[5:3] == 3'd7 && ir_op[0]) begin
-                    t0 <= a0; // MOV t0, a0
+                    t0 <= a0;
                 end else if (ir_op[5:3] != 3'd5) begin // not CMP
                     a0 <= alu_result[7:0];
                 end
@@ -135,6 +137,13 @@ always @(posedge clk or negedge rst_n) begin
                             3'd4: ph <= data_in;
                             default: ;
                         endcase
+                        state <= S0;
+                    end
+                    3'd6: begin // MOV ptr ← a0: modf[0]=0→pl, modf[0]=1→ph
+                        if (ir_op[0])
+                            ph <= a0;
+                        else
+                            pl <= a0;
                         state <= S0;
                     end
                     3'd1: begin // LB (ptr)
@@ -184,7 +193,12 @@ always @(posedge clk or negedge rst_n) begin
                     3'd4: if (flag_n)  pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
                     3'd5: if (!flag_n) pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in};
                     3'd6: pc <= pc + 16'd1 + {{8{data_in[7]}}, data_in}; // BRA
-                    3'd7: pc <= {ph, data_in}; // JMP absolute
+                    3'd7: begin // JMP: modf[0]=0 → JMP imm, modf[0]=1 → JMP (ptr)
+                        if (ir_op[0])
+                            pc <= {ph, pl}; // JMP (ptr) — computed jump
+                        else
+                            pc <= {ph, data_in}; // JMP imm — absolute
+                    end
                 endcase
                 if (ir_op[5:3] != 3'd7 && !(
                     (ir_op[5:3]==3'd0 && flag_z) || (ir_op[5:3]==3'd1 && !flag_z) ||
