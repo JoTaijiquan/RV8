@@ -93,7 +93,7 @@ Instruction timing:
 
 ---
 
-## 5. Simplified Chip List (23 chips)
+## 5. Chip List (27 logic chips + ROM + RAM = 29)
 
 | U# | Chip | Function |
 |:--:|------|----------|
@@ -110,7 +110,7 @@ Instruction timing:
 | U22 | 74HC74 | Flags (Z, C) |
 | — | AT28C256 | Program ROM |
 | — | 62256 | Data RAM |
-| **Total** | | **23 chips** |
+| **Total** | | **27 logic + ROM + RAM = 29** |
 
 Removed: second 138 (not needed — single bus with temp latch is simpler and proven).
 

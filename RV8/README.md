@@ -1,6 +1,6 @@
 # RV8 — 8-bit RISC-V Style CPU
 
-**25 logic chips. 8 registers. RISC-V syntax. Flash microcode. 2.17 MIPS @ 10 MHz.**
+**27 logic chips. 8 registers. RISC-V syntax. Flash microcode. ~1.25 MIPS @ 10 MHz.**
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Parameter | Value |
 |-----------|-------|
-| Logic chips | 25 (+ ROM + RAM = 27 total) |
+| Logic chips | 27 (+ ROM + RAM = 29 total) |
 | Gates | ~765 |
 | Registers | 8 (r0=zero, r1=ra, r2=a0, r3=a1, r4=t0, r5=t1, r6=s0, r7=sp) |
 | ISA | ~35 instructions, RISC-V style (~95% syntax match) |
@@ -16,7 +16,7 @@
 | Data path | 8-bit, single internal bus |
 | Address | 16-bit (64KB) |
 | Clock | 3.5 MHz (breadboard) / 10 MHz (PCB) |
-| MIPS | 2.17 @ 10 MHz |
+| MIPS | ~1.25 @ 10 MHz (8 steps max) |
 | Runs | BASIC, video games |
 
 ---
