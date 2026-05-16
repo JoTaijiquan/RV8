@@ -25,7 +25,7 @@
 - No EEPROM needed — opcode bits wire directly to control
 - 2.5 MIPS @ 10 MHz
 
-### RV802 designed (RISC-V + Flash microcode):
+### RV8 designed (RISC-V + Flash microcode):
 - 25 logic chips (27 total with ROM+RAM)
 - 8 general-purpose registers, 35 instructions
 - Single-bus architecture: simple hardware, microcode sequences everything
@@ -34,14 +34,14 @@
 - WiringGuide verified: buildable, no bus conflicts, timing OK
 
 ### Decision: two active designs
-- **RV802**: Best performance, fewest chips, RISC-V style (needs Flash programmer)
+- **RV8**: Best performance, fewest chips, RISC-V style (needs Flash programmer)
 - **RV8-G**: No programmer needed, pure educational value (more chips, slower)
 
 ---
 
 ## Day 7 (2026-05-16) — Verification & Truth
 
-### RV802 verified:
+### RV8 verified:
 - WiringGuide address bus conflict found and fixed (PC→574 with /OE)
 - Understand_by_Module.md created (6 modules for students)
 - Honest count: 25 logic + ROM + RAM = 27 packages
@@ -57,11 +57,11 @@
 ### Key insight: the three approaches
 ```
 Pure gates (RV8-G):     29+ chips, limited ISA, routing problems
-Microcode (RV802):      25 chips, rich ISA, verified buildable
+Microcode (RV8):      25 chips, rich ISA, verified buildable
 Wide ROM (Gigatron):    17 chips, rich ISA, 2× code size, fastest
 ```
 
-### RV802-W designed (wide instruction, accumulator):
+### RV8-W designed (wide instruction, accumulator):
 - 24 logic chips, no microcode, no step counter
 - 16-bit instruction: control byte + operand in one ROM word
 - Accumulator (a0) hardwired to ALU A — eliminates mux problem
@@ -71,8 +71,8 @@ Wide ROM (Gigatron):    17 chips, rich ISA, 2× code size, fastest
 
 ### Conclusion:
 Three viable designs, each with clear trade-offs:
-- **RV802** (27 logic, microcode): RISC-V register-register, 2.17 MIPS, most flexible
-- **RV802-W** (24 logic, wide ROM): RISC-V naming + accumulator, 8 MIPS, fastest
+- **RV8** (27 logic, microcode): RISC-V register-register, 2.17 MIPS, most flexible
+- **RV8-W** (24 logic, wide ROM): RISC-V naming + accumulator, 8 MIPS, fastest
 - **RV8-G** (26 logic, pure gates): no programmable logic, 2.5 MIPS, educational
 
 ---
@@ -85,5 +85,5 @@ Three viable designs, each with clear trade-offs:
 | 2026-05-11 | Original RV8 Verilog 69/69 pass |
 | 2026-05-13 | RV808 designed (44/44 pass) |
 | 2026-05-14 | Programmer board complete |
-| 2026-05-15 | RV802 + RV8-G designed, verified |
-| 2026-05-16 | **Deep verification: RV8-G has routing issues, RV802 confirmed best** |
+| 2026-05-15 | RV8 + RV8-G designed, verified |
+| 2026-05-16 | **Deep verification: RV8-G has routing issues, RV8 confirmed best** |

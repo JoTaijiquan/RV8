@@ -1,64 +1,48 @@
-# RV8 Project: Minimal 8-bit CPU Family
+# RV8 Project: Minimal 8-bit RISC-V Style CPU Family
 
 Build real computers from 74HC chips on breadboards.
 
 ## Active Designs
 
-| | RV802 | RV8-G |
-|--|:---:|:---:|
-| **Logic chips** | **25** | 27 |
-| **Total (+ ROM + RAM)** | **27** | 29 |
-| **Registers** | 8 (RISC-V style) | 5 (accumulator) |
-| **ISA** | 35 instr (register-register) | 30 instr (accumulator) |
-| **Control** | Flash microcode (SST39SF010A) | Pure gates (no EEPROM) |
-| **MIPS @ 10 MHz** | **3.0** | 2.5 |
-| **Needs programmer** | Yes (Flash) | **No** |
-| **Verified buildable** | ✅ | ✅ |
-| **Best for** | Performance + clean ISA | No-programmer purists |
+| | RV8 | RV8-W | RV8-G |
+|--|:---:|:---:|:---:|
+| **Logic chips** | 27 | **24** | 26 |
+| **Total** | 29 | **26** | 28 |
+| **Gates** | ~765 | **~640** | ~820 |
+| **MIPS @ 10 MHz** | 2.17 | **5.0** | 2.5 |
+| **Control** | Flash microcode | **No microcode** | Pure gates |
+| **ISA style** | RISC-V reg-reg | **RISC-V accumulator** | Accumulator |
+| **Cycles/instr** | 4-6 | **2** | 4 |
+| **ROM** | SST39SF010A | SST39SF010A | AT28C256 |
+| **Best for** | Flexibility | **Speed + simplicity** | No-programmer purists |
 
 ## Project Structure
 
 ```
 RV8/
-├── RV802/          ← 23 chips, RISC-V style, Flash microcode — ACTIVE
-├── RV8G/           ← 27 chips, accumulator, pure gates — ACTIVE
-├── RV808G/         ← 20 chips, Harvard, gates (design study)
+├── RV8/            ← RV8 (27 chips, RISC-V reg-reg, Flash microcode)
+├── RV8W/           ← RV8-W (24 chips, RISC-V accumulator, no microcode)
+├── RV8G/           ← RV8-G (26 chips, pure gates, no programmable logic)
 ├── Programmer/     ← ESP32 board (flash ROM + terminal)
-├── Old_Design/     ← Archived (RV8 original, RV801, RV808)
-├── Trainer/        ← Trainer board (planned)
-├── Computer/       ← Full PC board (planned)
+├── Old_Design/     ← Archived designs
+├── Reference/      ← Gigatron, SAP-1, Nand2Tetris
 └── README.md
 ```
 
 ## Quick Start
 
 ```bash
-# Simulate RV8-G (working now)
+# Simulate RV8
+cd RV8 && iverilog -o tb rv8_cpu.v tb/tb_rv8_cpu.v && vvp tb
+
+# Simulate RV8-G
 cd RV8G && iverilog -o tb rv8g_cpu.v tb/tb_rv8g_cpu.v && vvp tb
-
-# Flash a program (with Programmer board)
-python3 Programmer/tools/rv8flash.py /dev/ttyUSB0 program.bin
 ```
-
-## Which to build?
-
-| Your goal | Build |
-|-----------|-------|
-| Fewest chips, fastest, RISC-V style | **RV802** (23 chips) |
-| No programmer needed, pure gates | **RV8-G** (27 chips) |
 
 ## The Philosophy
 
-> **RV802**: Simple hardware + smart microcode = powerful CPU.
-> **RV8-G**: No black boxes — every signal is a wire you placed.
+> **RV8**: Full RISC-V register-register. Most flexible. Needs microcode Flash.
+> **RV8-W**: Fastest, fewest chips. Accumulator with RISC-V naming. No microcode.
+> **RV8-G**: Pure gates, no programmable logic at all. Educational.
 
-## Status
-
-| Item | RV802 | RV8-G |
-|------|:-----:|:-----:|
-| Design doc | ✅ | ✅ |
-| Verilog model | ✅ (19/21) | ✅ (34/34) |
-| WiringGuide (verified) | ✅ | ⬜ (needs rewrite) |
-| Assembler | ⬜ | ⬜ |
-| Build guide | ⬜ | ⬜ |
-| Programmer board | ✅ | ✅ |
+All three run BASIC and video games. All use the same 40-pin bus and Programmer board.

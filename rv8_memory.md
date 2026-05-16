@@ -8,7 +8,7 @@
 
 | Variant | Chips | Control | MIPS@10MHz | Status |
 |---------|:-----:|---------|:----------:|:------:|
-| **RV802** | 25 logic (+ROM+RAM=27) | Flash microcode | 2.17 | ✅ Verilog + WiringGuide verified |
+| **RV8** | 25 logic (+ROM+RAM=27) | Flash microcode | 2.17 | ✅ Verilog + WiringGuide verified |
 | **RV8-G** | 26 logic (+ROM+RAM=28) | Pure gates | 2.5 | ✅ Verilog 34/34, WiringGuide has issues |
 
 ## Key Realization (Day 7):
@@ -17,7 +17,7 @@
 
 ```
 1. Pure gates:     29+ chips, limited ISA — hard to route all signals
-2. Microcode ROM:  25 chips, rich ISA — one Flash chip does all decode (RV802)
+2. Microcode ROM:  25 chips, rich ISA — one Flash chip does all decode (RV8)
 3. Wide ROM:       17 chips, rich ISA — 16-bit instruction = control bits (Gigatron style)
 ```
 
@@ -31,7 +31,7 @@ The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs
 - Fixing these adds 3+ chips → 29+ total
 - Pure gates approach costs MORE chips than microcode approach
 
-## RV802 Status:
+## RV8 Status:
 
 - WiringGuide verified: no bus conflicts, 10MHz timing OK
 - Address conflict fixed: PC as 74HC574 (has /OE) + address latches
@@ -40,7 +40,7 @@ The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs
 
 ## Design Philosophy Conclusion:
 
-> **RV802 (microcode) = fewer chips + more capable + verified buildable**
+> **RV8 (microcode) = fewer chips + more capable + verified buildable**
 > **RV8-G (pure gates) = more chips + less capable + routing problems**
 > **Wide ROM (Gigatron) = fewest chips + fastest + 2× code size**
 
@@ -48,7 +48,7 @@ The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs
 
 ```
 /home/jo/kiro/RV8/
-├── RV802/          ← 25-chip RISC-V style, Flash microcode (PRIMARY)
+├── RV8/          ← 25-chip RISC-V style, Flash microcode (PRIMARY)
 ├── RV8G/           ← 26-chip pure gates (SECONDARY, has issues)
 ├── RV808G/         ← 20-chip Harvard (design study)
 ├── Programmer/     ← ESP32 board (works with all)
@@ -59,7 +59,7 @@ The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs
 
 ## Next Steps
 
-- [ ] Decide: RV802 (microcode) vs Wide ROM (Gigatron style) vs fix RV8-G
+- [ ] Decide: RV8 (microcode) vs Wide ROM (Gigatron style) vs fix RV8-G
 - [ ] Whichever chosen: complete WiringGuide, assembler, build
 - [ ] Programmer board physical build
 - [ ] BASIC interpreter

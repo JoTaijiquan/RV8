@@ -2,7 +2,7 @@
 
 ---
 
-## RV802-W (24 logic chips, accumulator, wide ROM, no microcode)
+## RV8-W (24 logic chips, accumulator, wide ROM, no microcode)
 
 ### v0.1 — 2026-05-16
 - Initial design: 24 logic chips, 16-bit instruction word, 1 cycle/instruction
@@ -15,7 +15,7 @@
 
 ---
 
-## RV802 (25 logic chips, RISC-V style, Flash microcode)
+## RV8 (25 logic chips, RISC-V style, Flash microcode)
 
 ### v0.3 — 2026-05-16
 - Address bus conflict found and fixed (PC as 574 + address latches)
@@ -24,7 +24,7 @@
 - Honest speed: 2.17 MIPS @ 10 MHz (PC increment via ALU costs 1 step)
 
 ### v0.2 — 2026-05-15
-- Verilog model: rv802_cpu.v (19/21 tests pass, BRA+r3 minor fix pending)
+- Verilog model: rv8_cpu.v (19/21 tests pass, BRA+r3 minor fix pending)
 - WiringGuide: verified buildable, 25 logic chips, no bus conflicts, 10MHz timing OK
 - JSON-style WiringGuide added (pin-by-pin format)
 - Honest chip count: 25 logic + ROM + RAM = 27 packages (was claimed 23)
@@ -42,7 +42,7 @@
 - Deep ISA vs hardware verification: found AND/OR/XOR impossible, data routing gaps
 - Fixed pl to full 8-bit (2× 74HC161)
 - Honest count: 26 logic + ROM + RAM = 28 (without logic ops fix)
-- With full fix: 29+ chips needed — more than RV802
+- With full fix: 29+ chips needed — more than RV8
 - Conclusion: pure gates approach is self-defeating for rich ISA
 
 ### v0.3 — 2026-05-15
@@ -68,5 +68,5 @@
 
 - Original RV8 (68 instr, accumulator) → Old_Design/ (unbuildable as documented)
 - RV801, RV808 → Old_Design/
-- Active: RV802 (RISC-V, Flash) + RV8-G (pure gates)
+- Active: RV8 (RISC-V, Flash) + RV8-G (pure gates)
 - Key lesson: simple hardware + smart microcode > complex hardware
