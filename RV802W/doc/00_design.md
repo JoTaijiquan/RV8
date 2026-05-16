@@ -120,44 +120,88 @@ Bit 1:   REG_WRITE (latch IBUS into r[rd])
 Bit 0:   AC_TO_BUS (AC drives IBUS for store/memory write)
 ```
 
-### Full ISA:
+### Full ISA (RISC-V names, accumulator-based):
+
+**Rule: `a0` is always destination AND first source (= the accumulator).**
+
 ```asm
-# ALU operations (AC = AC op source)
-ADD  rs       # AC = AC + r[rs]
-ADDI imm      # AC = AC + imm
-SUB  rs       # AC = AC - r[rs]
-SUBI imm      # AC = AC - imm
-AND  rs       # AC = AC & r[rs]
-ANDI imm      # AC = AC & imm
-OR   rs       # AC = AC | r[rs]
-ORI  imm      # AC = AC | imm
-XOR  rs       # AC = AC ^ r[rs]
-XORI imm      # AC = AC ^ imm
-SHL           # AC = AC << 1
-SHR           # AC = AC >> 1
+# ALU register (a0 = a0 op rs)
+ADD  a0, a0, rs       # a0 = a0 + r[rs]
+SUB  a0, a0, rs       # a0 = a0 - r[rs]
+AND  a0, a0, rs       # a0 = a0 & r[rs]
+OR   a0, a0, rs       # a0 = a0 | r[rs]
+XOR  a0, a0, rs       # a0 = a0 ^ r[rs]
+SLL  a0, a0, 1        # a0 = a0 << 1
+SRL  a0, a0, 1        # a0 = a0 >> 1
 
-# Load/Move
-LI   imm      # AC = imm
-MOV  rs       # AC = r[rs]
-ST   rd       # r[rd] = AC
+# ALU immediate (a0 = a0 op imm)
+ADDI a0, a0, imm      # a0 = a0 + imm
+SUBI a0, a0, imm      # a0 = a0 - imm (pseudo: ADDI negative)
+ANDI a0, a0, imm      # a0 = a0 & imm
+ORI  a0, a0, imm      # a0 = a0 | imm
+XORI a0, a0, imm      # a0 = a0 ^ imm
 
-# Memory
-LB   rs, off  # AC = mem[r[rs] + off]
-SB   rs, off  # mem[r[rs] + off] = AC
+# Load immediate / Move
+LI   a0, imm          # a0 = imm
+MV   a0, rs           # a0 = r[rs]
+MV   rd, a0           # r[rd] = a0
 
-# Branch (compare AC with zero or register)
-BEQ  off      # branch if AC == 0
-BNE  off      # branch if AC != 0
-BCS  off      # branch if carry set
-BCC  off      # branch if carry clear
-JMP  off      # unconditional jump (PC += offset)
-JAL  off      # r7 = PC, PC += offset (link in r7)
+# Memory (a0 is always data source/dest)
+LB   a0, off(rs)      # a0 = mem[r[rs] + off]
+SB   a0, off(rs)      # mem[r[rs] + off] = a0
+
+# Branch (compare a0)
+BEQ  a0, zero, off    # branch if a0 == 0
+BNE  a0, zero, off    # branch if a0 != 0
+BLT  a0, zero, off    # branch if a0 < 0 (negative)
+BGE  a0, zero, off    # branch if a0 >= 0
+
+# Jump
+JAL  ra, off          # ra = PC+2, PC += off
+JALR zero, ra         # PC = ra (return)
+J    off              # PC += off (unconditional)
 
 # System
-NOP / HLT / RET (= JMP r7)
+NOP                   # no operation
+ECALL                 # halt / system call
 ```
 
-**~25 instructions. Enough for BASIC.**
+### Register names (RISC-V ABI):
+```
+r0 = zero (hardwired 0)
+r1 = a0   (accumulator — ALL ALU ops use this)
+r2 = a1   (argument / temp)
+r3 = t0   (temp)
+r4 = t1   (temp)
+r5 = s0   (saved / address register)
+r6 = s1   (saved / page register)
+r7 = ra/sp (return address or stack pointer)
+```
+
+### Assembly looks like RISC-V:
+```asm
+# Fibonacci
+    LI   a0, 0           # a = 0
+    MV   s0, a0          # save a
+    LI   a0, 1           # b = 1
+    MV   s1, a0          # save b
+    LI   a0, 10
+    MV   t0, a0          # count = 10
+loop:
+    MV   a0, s0          # a0 = a
+    ADD  a0, a0, s1      # a0 = a + b
+    MV   t1, a0          # temp = a+b
+    MV   a0, s1
+    MV   s0, a0          # a = old b
+    MV   a0, t1
+    MV   s1, a0          # b = temp
+    MV   a0, t0
+    SUBI a0, a0, 1       # count--
+    MV   t0, a0
+    BNE  a0, zero, loop  # if count != 0
+    MV   a0, s1          # result in a0
+    ECALL                 # halt
+```
 
 ---
 
