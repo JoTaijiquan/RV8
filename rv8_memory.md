@@ -1,52 +1,58 @@
 # RV8 Project — Session Memory
 
-**Last updated**: 2026-05-16 21:37
+**Last updated**: 2026-05-17 00:17
 
 ---
 
-## Final Family (4 active variants)
+## Focus: RV8-GR (ready for physical build!)
+
+### What's done:
+- ✅ Design (21 chips, no microcode, RAM registers)
+- ✅ ISA (21 instructions, ~80% RV8 compatible, XOR free)
+- ✅ Verilog (11/11 unit tests + assembly integration test)
+- ✅ Assembler (rv8gr_asm.py)
+- ✅ WiringGuide (bus-centric, verified)
+- ✅ Instruction trace (verified 21 chips)
+- ✅ Understand by Module
+- ✅ Bank switch design (for Trainer board, future)
+- ✅ VCD waveform support
+
+### What's next:
+- ⬜ Order parts (~฿575)
+- ⬜ Build Programmer board (ESP32 + TXB0108)
+- ⬜ Build RV8-GR on breadboard
+- ⬜ First program running on real hardware
+
+---
+
+## All Variants (final, traced):
 
 | | RV8 | RV8-R | RV8-G | RV8-GR |
 |--|:---:|:---:|:---:|:---:|
-| Logic chips | 27 | **17** | 27 | **19** |
-| Total | 29 | 20 | 29 | 21 |
-| MIPS | 1.25 | 1.0 | **1.7** | **1.7** |
-| ISA | Full (35) | Full (35) | Full (35) | Reduced (20) |
-| Microcode | Yes | Yes | **No** | **No** |
-| Binary compat | — | ✅=RV8 | ✅=RV8 | ❌ own |
-| Registers | Hardware | RAM | RAM | RAM |
+| Logic chips | 27 | 18 | 28 | **21** |
+| Total | 29 | 21 | 30 | **23** |
+| Verilog | ✅ 8/8 | ⬜ | ⬜ | **✅ 11/11** |
+| Assembler | ⬜ | ⬜ | ⬜ | **✅** |
+| Ready to build | ⬜ | ⬜ | ⬜ | **✅** |
 
-## Key Insight:
-- Full ISA always costs ~27 chips (gates or microcode — same)
-- RAM registers save ~10 chips (RV8-R = 17 chips!)
-- Reduced ISA (drop AND/OR/XOR) saves more (RV8-GR = 19 chips, no microcode)
-- Serial ALU doesn't save enough (archived RV8-S)
+---
 
-## Folder Structure
+## Key Design Decisions:
+- Bank switch on Trainer board (CPU stays 21 chips)
+- Registers in RAM $0000-$0007 (data path never bank-switched)
+- XOR instruction free (reuse SUB XOR chips)
+- 3-cycle execution (fetch ctrl, fetch operand, execute)
+- Control byte bits directly drive hardware (no lookup)
+- ~80% compatible with RV8 ISA (missing AND/OR/SRL only)
 
+## Folder Structure:
 ```
-/home/jo/kiro/RV8/
-├── RV8/        27 chips, proven, microcode, Verilog 8/8 pass
-├── RV8R/       17 chips, RAM regs, microcode, fewest+full ISA
-├── RV8G/       27 chips, no microcode, full ISA, fastest
-├── RV8GR/      19 chips, no microcode, reduced ISA, cheapest games
-├── Programmer/ ESP32 + TXB0108 (works with all)
-├── Old_Design/ Archived (RV8-G, RV8-S, RV808, RV801, original)
-├── Reference/  Gigatron, SAP-1, Nand2Tetris
-└── README.md
+RV8/
+├── RV8/     27 chips, microcode (proven)
+├── RV8R/    18 chips, microcode, RAM regs
+├── RV8G/    28 chips, no microcode, full ISA
+├── RV8GR/   21 chips, no microcode, READY TO BUILD ←
+├── Programmer/
+├── Old_Design/
+└── Reference/
 ```
-
-## What's Working:
-- RV8 microcode-driven Verilog: 8/8 tests pass
-- RV8 microcode generator (Python): generates Flash .bin
-- Programmer board: designed (ESP32 + TXB0108 + firmware + tools)
-- All WiringGuides: bus-centric format (RV8-Bus external + IBUS internal)
-- Understand by Module: English + Thai (RV8, RV8-G)
-
-## Next Steps:
-1. Decide which variant to build first
-2. Complete instruction trace for chosen variant
-3. Build Programmer board physically
-4. Write assembler
-5. Build CPU on breadboard
-6. BASIC interpreter

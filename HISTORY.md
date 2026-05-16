@@ -2,32 +2,39 @@
 
 ## Day 1-5 (2026-05-10 to 2026-05-14)
 - Original designs explored and archived
+- Programmer board complete
 
 ## Day 6 (2026-05-15)
-- RV8 redesigned (RISC-V, microcode)
-- Old RV8-G (pure gates) designed then archived (broken)
+- RV8 redesigned (RISC-V, microcode, 27 chips)
+- RV8-G and RV8-GR concepts
 
-## Day 7 (2026-05-16) — Final Architecture
+## Day 7 (2026-05-16-17) — Final Architecture + Implementation
 
-### Key discoveries:
-1. Full ISA always costs ~27 chips (regardless of approach)
-2. RAM registers save ~10 chips (proven by RV801-A pattern)
-3. Serial ALU doesn't save enough to justify speed loss (RV8-S archived)
-4. "No microcode" with full ISA = same chip count as microcode (RV8-G = 27)
-5. Reduced ISA (drop AND/OR/XOR + relative branch) = real savings (RV8-GR = 19)
+### Designs verified (all traced):
+- RV8: 27 chips, microcode, Verilog 8/8 pass
+- RV8-R: 18 chips, microcode, RAM registers, traced
+- RV8-G: 28 chips, no microcode, full ISA, traced
+- RV8-GR: 21 chips, no microcode, reduced ISA, **Verilog 11/11 + assembler + assembly test pass**
 
-### Final family:
-| Variant | Chips | ISA | Microcode | Speed |
-|---------|:-----:|:---:|:---------:|:-----:|
-| RV8-R | **17** | Full | Yes | 1.0 MIPS |
-| RV8-GR | **19** | Reduced | No | 1.7 MIPS |
-| RV8 | 27 | Full | Yes | 1.25 MIPS |
-| RV8-G | 27 | Full | No | 1.7 MIPS |
+### RV8-GR fully implemented:
+- Verilog model (11/11 unit tests pass)
+- Assembler (rv8gr_asm.py, working)
+- Assembly integration test (full pipeline: asm→bin→CPU→pass)
+- VCD waveform support (gtkwave)
+- Full doc set (design, ISA, trace, wiring, modules, bank switch)
 
-### Archived (not worth building):
-- Old RV8-G (pure gates): 32 chips honest, broken routing
-- RV8-S: serial ALU, 15 chips but 0.3 MIPS, too slow
-- RV808/RV801/original RV8: superseded
+### Bank switch design:
+- Run code from RAM via XOR on A15 (fetch path only)
+- Registers ($0000-$0007) always safe (data path unchanged)
+- Decision: bank switch lives on TRAINER BOARD (not CPU board)
+- CPU board stays pure at 21 chips
+
+### Key lessons:
+1. Every trace finds 1-2 more chips than claimed
+2. Full ISA always costs ~27 chips regardless of approach
+3. RAM registers save ~10 chips (proven)
+4. "No microcode" doesn't save chips for full ISA (saves for reduced)
+5. Bank switch belongs on expansion board, not CPU
 
 ---
 
@@ -37,5 +44,6 @@
 |------|-----------|
 | 2026-05-10 | Project started |
 | 2026-05-14 | Programmer board complete |
-| 2026-05-15 | RV8 microcode working (8/8 tests) |
-| 2026-05-16 | **Final family: RV8(27)/RV8-R(18)/RV8-G(28)/RV8-GR(21), all traced+verified** |
+| 2026-05-15 | RV8 microcode working (8/8) |
+| 2026-05-16 | All 4 variants traced and verified |
+| 2026-05-17 | **RV8-GR: full toolchain (Verilog + assembler + test) ready for build** |
