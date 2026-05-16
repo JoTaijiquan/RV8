@@ -222,15 +222,21 @@ Part:{
 // CONTROL (from IR_HIGH bits — no microcode!)
 // ═══════════════════════════════════════════════════════════════
 //
-// IR_HIGH (U2) Q outputs directly control hardware:
-//   Q7: ALU_SUB (0=ADD, 1=SUB)
-//   Q6: XOR_MODE (1=XOR result → AC, bypass adder)
-//   Q5: MUX_SEL (0=adder→AC, 1=IBUS/XOR→AC)
-//   Q4: AC_CLK_EN (1=write result to AC)
-//   Q3: AC_TO_BUS (1=AC drives IBUS for store)
-//   Q2: BUF_OE (1=enable RAM↔IBUS bridge)
-//   Q1: BUF_DIR (0=RAM→IBUS read, 1=IBUS→RAM write)
-//   Q0: ADDR_MODE (0=PC drives address, 1=operand drives address)
+// IR_HIGH (U2) Q outputs encode instruction type:
+//   Q7: ALU_SUB      (0=ADD, 1=SUB → to XOR chips)
+//   Q6: XOR_MODE     (1=XOR result → AC, bypass adder)
+//   Q5: MUX_SEL      (0=ALU result→AC, 1=IBUS→AC for LI/LB)
+//   Q4: AC_WR        (1=write to AC this cycle)
+//   Q3: SOURCE_TYPE  (0=immediate, 1=register from RAM)
+//   Q2: STORE        (1=write AC to RAM[operand])
+//   Q1: BRANCH       (1=conditional jump, check Z flag)
+//   Q0: JUMP         (1=unconditional PC load)
+//
+// Derived signals (from 2-3 AND/OR gates, using spare gates):
+//   ADDR_MODE = Q3 OR Q2 (SOURCE_TYPE OR STORE)
+//   BUF_OE    = Q3 OR Q2 (enable RAM bridge when accessing RAM)
+//   BUF_DIR   = Q2 (STORE → write direction)
+//   AC_TO_BUS = Q2 (STORE → AC drives IBUS)
 //
 // State logic (U14 FF2) provides:
 //   PC_INC = NOT(STATE) (PC counts during fetch)
