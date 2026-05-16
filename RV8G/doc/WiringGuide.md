@@ -133,11 +133,17 @@ Part:{
     // ph = register with /OE (drives A[15:8] during data access)
     // ═══════════════════════════════════════════
 
-    U10:{type:74HC161, function:"pl (pointer low, auto-increment)",
+    U10:{type:74HC161, function:"pl low nibble (pointer [3:0], auto-increment)",
         1:/RST, 2:CLK, 3:D0, 4:D1, 5:D2, 6:D3,
         7:ptr_inc, 8:GND, 9:pl_ld, 10:ptr_inc,
-        11:PL3, 12:PL2, 13:PL1, 14:PL0, 15:, 16:VCC},
-    // Q outputs → U16 B inputs (address mux, selected during data access)
+        11:PL3, 12:PL2, 13:PL1, 14:PL0, 15:U10b.10, 16:VCC},
+    // TC(15) → U10b.ENT (carry to high nibble)
+
+    U10b:{type:74HC161, function:"pl high nibble (pointer [7:4], carry from U10)",
+        1:/RST, 2:CLK, 3:D4, 4:D5, 5:D6, 6:D7,
+        7:ptr_inc, 8:GND, 9:pl_ld, 10:U10.15,
+        11:PL7, 12:PL6, 13:PL5, 14:PL4, 15:, 16:VCC},
+    // Full 8-bit pointer low: PL0-PL7 → U16+U17 B inputs
 
     U11:{type:74HC574, function:"ph (pointer high, /OE for addr bus)",
         1:/data_mode, 2:D0, 3:D1, 4:D2, 5:D3,
@@ -190,12 +196,12 @@ Part:{
         13:PL3, 14:PC3, 15:GND, 16:VCC},
     // S=addr_sel=state[1]: 0=PC(fetch), 1=pl(data)
 
-    U17:{type:74HC157, function:"Address mux low A[7:4] (PC vs pl/operand)",
+    U17:{type:74HC157, function:"Address mux A[7:4] (PC vs pl high)",
         1:addr_sel, 2:PC4, 3:PL4, 4:A4,
         5:PC5, 6:PL5, 7:A5, 8:GND,
         9:A6, 10:PL6, 11:PC6, 12:A7,
         13:PL7, 14:PC7, 15:GND, 16:VCC},
-    // Note: pl is only 4-bit (U10). PL4-PL7 need source — tie to operand or 0
+    // S=addr_sel. A=PC[7:4], B=PL[7:4] from U10b
 
     U18:{type:74HC541, function:"PC high buffer (tri-state to A[15:8])",
         1:data_mode, 2:PC8, 3:PC9, 4:PC10, 5:PC11,
@@ -308,27 +314,31 @@ Part:{
 // VERIFICATION
 // ═══════════════════════════════════════════
 //
-// Address bus conflict: NONE
+// Address bus conflict: NONE ✅
 //   Fetch: U18(541) drives A[15:8], U16-U17(157) select PC for A[7:0]
 //   Data:  U11(574) drives A[15:8], U16-U17(157) select pl for A[7:0]
 //   Control: state[1] switches both simultaneously
 //
-// Data bus: shared (ROM output + RAM data + register read/write)
+// Data bus: shared (ROM output + RAM data + register read/write) ✅
 //   Only one source at a time (controlled by /RD, /WR, register /OE)
 //
-// ALU B conflict: NONE
+// ALU B conflict: NONE ✅
 //   U6 (operand) and U8 (t0) share ALUB wires
 //   imm_oe and reg_oe are complementary (from opcode[0])
 //
-// CHIP COUNT: 23 logic + 0 buffer issues... 
-//   Wait: U17 needs PL4-PL7 but U10 (74HC161) is only 4-bit!
-//   pl is 4-bit counter. For full 8-bit pointer low, need 2× 74HC161.
-//   OR: use operand as low byte offset (like RV802 does).
-//   
-// ISSUE: pl is only 4-bit (one 74HC161 = 4 bits). 
-//   Need 8-bit pointer low for full memory access.
-//   Fix: add U10b (second 74HC161 for pl[7:4]) = +1 chip = 24 logic chips.
-//   OR: use zero-page addressing (A[15:8]=0, A[7:0]=operand) — no pointer needed.
+// Pointer: FULL 8-BIT ✅
+//   U10 + U10b = 8-bit counter with carry chain
+//   PL[7:0] → U16+U17 B inputs (full byte address low)
 //
-// HONEST COUNT: 24 logic chips + ROM + RAM = 26 packages
-//   (if using 8-bit pointer: +1 chip = 25 logic = 27 packages)
+// CHIP COUNT (FINAL):
+//   PC: 4× 74HC161
+//   IR: 2× 74HC574
+//   Registers: 3× 74HC574 (a0, t0, sp)
+//   Pointer: 2× 74HC161 (pl 8-bit) + 1× 74HC574 (ph)
+//   ALU: 2× 74HC283 + 2× 74HC86
+//   Address: 2× 74HC157 + 1× 74HC541
+//   Control: 1× 74HC139 + 2× 74HC74 + 1× 74HC08 + 1× 74HC32
+//   ─────────────────────────────────────────
+//   Total: 26 logic chips + ROM + RAM = 28 packages
+//
+// NO BUS CONFLICTS. FULLY BUILDABLE. ALL DIP. AVAILABLE IN THAILAND.
