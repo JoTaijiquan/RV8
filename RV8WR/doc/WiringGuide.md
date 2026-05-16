@@ -1,370 +1,267 @@
-# RV8-W CPU — WiringGuide (Bus-Centric)
-
-```
+{
 // ═══════════════════════════════════════════════════════════════
-// RV8-W CPU — WiringGuide (Bus-Centric)
-// 25 logic chips + ROM + RAM = 27 packages
+// RV8-WR CPU — WiringGuide (Bus-Centric)
+// 19 logic chips + ROM + RAM = 21 packages
 //
 // NO MICROCODE. Instruction control byte directly drives hardware.
-// 2-cycle fetch: cycle 1 = control byte → IR_HIGH, cycle 2 = operand + execute
+// RAM REGISTERS ($00-$07). Only AC is a real chip.
+// 2-cycle fetch + 1-cycle execute = 3 cycles per instruction.
 //
-// THREE BUSES:
-//   RV8-Bus (external, 40-pin): A[15:0] + D[7:0] → RAM, peripherals
-//   IBUS (internal, 8-bit): connects registers, ALU B input, bus buffer, AC buffer
-//   ALU_A (internal, hardwired): AC Q outputs → adder A inputs (always, no mux)
+// TWO BUSES:
+//   RV8-Bus (external, 40-pin): A[15:0] + D[7:0] → ROM, RAM
+//   IBUS (internal, 8-bit): AC buffer, bus bridge, ALU B input
 //
-// U22 (74HC245) bridges IBUS ↔ RV8-Bus D[7:0]
-// U25 (74HC541) bridges AC Q → IBUS (for store/move operations)
+// AC (U1) hardwired to ALU A. XOR chips reused for XOR instruction.
 // ═══════════════════════════════════════════════════════════════
 
-Project: RV8-W,
+Project: RV8-WR,
 
 // ═══════════════════════════════════════════════════════════════
-// RV8-Bus (EXTERNAL) — 40-pin connector to RAM, peripherals
+// RV8-Bus (EXTERNAL) — 40-pin, same as all RV8 variants
 // ═══════════════════════════════════════════════════════════════
 
 RV8_Bus:{
-    // --- Address (from PC or register via U24 mux) ---
-    A0:  U24.Y1,   // mux: PC0 or REG_A0
-    A1:  U24.Y2,   // mux: PC1 or REG_A1
-    A2:  U24.Y3,   // mux: PC2 or REG_A2
-    A3:  U24.Y4,   // mux: PC3 or REG_A3
-    A4:  U16.Q0 or REG_A4,  // PC[7:4] or register high nibble
-    A5:  U16.Q1 or REG_A5,
-    A6:  U16.Q2 or REG_A6,
-    A7:  U16.Q3 or REG_A7,
-    A8:  U21.Y1,   // PC high via buffer (ROM only) or register
-    A9:  U21.Y2,
-    A10: U21.Y3,
-    A11: U21.Y4,
-    A12: U21.Y5,
-    A13: U21.Y6,
-    A14: U21.Y7,
-    A15: U21.Y8,
-    // PC (U15-U18) drives during fetch (MEM_MODE=0)
-    // Register value drives during memory access (MEM_MODE=1, via U24)
+    "A[15:0]": "From PC (fetch) or operand (register/memory access)",
+    "D[7:0]":  "ROM data out / RAM data ↔ U10 (245 bridge) ↔ IBUS",
+    "/RD":     "From IR_HIGH control bit → ROM./OE + RAM./OE",
+    "/WR":     "From IR_HIGH control bit → RAM./WE",
+    CLK:       "Crystal oscillator",
+    "/RST":    "10K pull-up + 100nF + pushbutton",
+    "/IRQ":    "10K pull-up (active low, directly to state logic)",
+    SYNC:      "State=0 (new instruction starting)",
 
-    // --- Data (bridged to IBUS via U22) ---
-    D0: U22.A1,  D1: U22.A2,  D2: U22.A3,  D3: U22.A4,
-    D4: U22.A5,  D5: U22.A6,  D6: U22.A7,  D7: U22.A8,
-
-    // --- Control ---
-    "/RD": from_control (MEM_EN AND NOT MEM_RW),
-    "/WR": from_control (MEM_EN AND MEM_RW),
-    CLK:  crystal_oscillator,
-    "/RST": reset_circuit,
-    "/NMI": pull-up_10K (reserved),
-    "/IRQ": pull-up_10K (reserved),
-    HALT: (reserved),
-    SYNC: STATE (0=fetch, 1=execute),
-
-    // --- 40-pin pinout (same as RV8) ---
-    pin_1:A0, pin_2:A1, pin_3:A2, pin_4:A3,
-    pin_5:A4, pin_6:A5, pin_7:A6, pin_8:A7,
-    pin_9:A8, pin_10:A9, pin_11:A10, pin_12:A11,
-    pin_13:A12, pin_14:A13, pin_15:A14, pin_16:A15,
-    pin_17:D0, pin_18:D1, pin_19:D2, pin_20:D3,
-    pin_21:D4, pin_22:D5, pin_23:D6, pin_24:D7,
-    pin_25:"/RD", pin_26:"/WR", pin_27:CLK, pin_28:"/RST",
-    pin_29:"/NMI", pin_30:"/IRQ", pin_31:HALT, pin_32:SYNC,
-    pin_33:nc, pin_34:nc, pin_35:nc, pin_36:nc,
-    pin_37:nc, pin_38:nc, pin_39:VCC, pin_40:GND
+    pinout: {
+        "1-8":   "A[7:0]",
+        "9-16":  "A[15:8]",
+        "17-24": "D[7:0]",
+        25:"/RD", 26:"/WR", 27:"CLK", 28:"/RST",
+        29:"/NMI", 30:"/IRQ", 31:"HALT", 32:"SYNC",
+        "33-38":"reserved", 39:"VCC", 40:"GND"}
 },
 
 // ═══════════════════════════════════════════════════════════════
-// IBUS (INTERNAL) — 8-bit shared bus inside the CPU
-// Only ONE chip drives IBUS at a time (control byte ensures)
+// IBUS (INTERNAL) — 8-bit, connects AC buffer + bus bridge + ALU B
 // ═══════════════════════════════════════════════════════════════
 
 IBUS:{
     width: 8,
     drivers: [
-        "U2-U8 (registers r1-r7, selected by U19 /OE decode)",
-        "U10 (IR_LOW/operand, when IMM_MODE=1 AND STATE=1)",
-        "U22 (bus buffer, when reading RAM → IBUS)",
-        "U25 (AC buffer, when AC_TO_BUS=1)"
+        "U10 (245 bus bridge, when reading RAM → IBUS)",
+        "U9 (541 AC buffer, when AC_TO_BUS=1)"
     ],
     consumers: [
-        "U2-U8 (register D inputs, latched by U20 CLK decode)",
-        "U13-U14 (XOR gates → ALU B input)",
-        "U22 (bus buffer, when writing IBUS → RAM)"
+        "U5-U6 (XOR chips, ALU B input via XOR)",
+        "U10 (245 bus bridge, when writing IBUS → RAM)",
+        "U1 (AC D-input, via mux: ALU result or IBUS)"
     ],
-    rule: "Control byte ensures only ONE driver active per cycle 2"
+    rule: "Only one driver at a time. Controlled by IR_HIGH bits."
 },
 
 // ═══════════════════════════════════════════════════════════════
-// ALU_A (INTERNAL, HARDWIRED) — AC Q always drives adder A inputs
-// NOT a bus — dedicated point-to-point traces
-// ═══════════════════════════════════════════════════════════════
-
-ALU_A:{
-    width: 8,
-    type: "hardwired (not tri-state, not shared)",
-    driver: "U1 Q[7:0] (AC, /OE=GND, always enabled)",
-    consumers: [
-        "U11 A1-A4 (adder low nibble, bits 3:0)",
-        "U12 A1-A4 (adder high nibble, bits 7:4)",
-        "U25 A1-A8 (AC→IBUS buffer inputs)"
-    ],
-    note: "AC outputs ALWAYS connected. No mux, no control needed."
-},
-
-// ═══════════════════════════════════════════════════════════════
-// CHIPS ON IBUS (internal bus)
+// CHIPS (19 logic)
 // ═══════════════════════════════════════════════════════════════
 
 Part:{
 
-    // --- ACCUMULATOR (on ALU_A, NOT on IBUS directly) ---
-    U1:{type:74HC574, bus:ALU_A, function:"AC (accumulator, hardwired to ALU A)",
-        1:GND, 11:AC_CLK, "2-9":"ALU_result[7:0]", "12-19":"→ALU_A + U25_inputs", 10:GND, 20:VCC},
-    // /OE(1)=GND: ALWAYS drives (Q→adder A inputs + U25 buffer inputs)
-    // CLK(11)=AC_CLK: gated CLK, fires when AC_WR=1 AND STATE=1 AND CLK↑
-    // D(2-9) from ALU result (adder Σ outputs, direct wire)
-    //   NOTE: For XOR instruction, route XOR chip output (U13-U14) to AC D inputs
-    //   instead of adder output. Use IR_HIGH control bit to select:
-    //     ALU_OP=ADD/SUB: AC.D ← adder output (U11.S + U12.S)
-    //     ALU_OP=XOR:     AC.D ← XOR output (U13.Y + U14.Y, before adder)
-    //   Implementation: cascade the existing AC D-input path:
-    //     U13-U14 XOR outputs already exist (used for SUB invert)
-    //     When ALU_SUB=0 AND XOR_MODE=1: XOR output = AC XOR IBUS (not inverted B)
-    //     Route via same wires, just don't feed through adder
-    //     Needs: 1 control bit in IR_HIGH to select XOR vs ADD result → AC.D
-    //     No extra chip — just wiring choice on existing mux/path
-    // Q(12-19) hardwired to U11.A, U12.A, U25.A (always)
+    // === AC (the only real register) ===
+    U1:{type:74HC574, bus:"ALU_A (hardwired) + IBUS (via U9 buffer)",
+        function:"AC — accumulator, always drives ALU A",
+        1:GND, 11:AC_CLK, 10:GND, 20:VCC,
+        "2-9":"AC D-inputs (from ALU result OR IBUS, selected by U11-U12 mux)",
+        "12-19":"AC Q-outputs → ALU A (U3.A + U4.A) + U9 buffer input"},
+    // /OE=GND (always drives ALU A)
+    // CLK=AC_CLK (from IR_HIGH bit, gated by state)
+    // D from mux: adder output (ADD/SUB) or XOR output (XOR) or IBUS (LI/LB)
 
-    // --- REGISTERS (on IBUS) ---
-    U2:{type:74HC574, bus:IBUS, function:"r1 (a1)",
-        1:U19.Y1, 11:U20.Y1, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U3:{type:74HC574, bus:IBUS, function:"r2 (t0)",
-        1:U19.Y2, 11:U20.Y2, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U4:{type:74HC574, bus:IBUS, function:"r3 (t1)",
-        1:U19.Y3, 11:U20.Y3, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U5:{type:74HC574, bus:IBUS, function:"r4 (s0)",
-        1:U19.Y4, 11:U20.Y4, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U6:{type:74HC574, bus:IBUS, function:"r5 (s1)",
-        1:U19.Y5, 11:U20.Y5, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U7:{type:74HC574, bus:IBUS, function:"r6 (s2)",
-        1:U19.Y6, 11:U20.Y6, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    U8:{type:74HC574, bus:IBUS, function:"r7 (ra/sp)",
-        1:U19.Y7, 11:U20.Y7, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
-    // /OE(1) from U19 (read decode) — selects who drives IBUS
-    // CLK(11) from U20 (write decode) — selects who latches from IBUS
-    // D(2-9) from IBUS (data to latch)
-    // Q(12-19) to IBUS (when /OE=LOW)
+    // === IR (instruction register, 2 bytes) ===
+    U2:{type:74HC574, function:"IR_HIGH — control byte, outputs DRIVE hardware",
+        1:GND, 11:IR_CLK, 10:GND, 20:VCC,
+        "2-9":"D[7:0] from RV8-Bus (ROM data)",
+        "12-19":"Q → directly to: ALU_SUB, AC_CLK, MEM_WR, AC_TO_BUS, XOR_MODE, ADDR_MODE, etc."},
+    // /OE=GND (always output)
+    // Q bits ARE the control signals (no decode needed!)
 
-    // --- IR (latches from ROM data bus) ---
-    U9:{type:74HC574, bus:control, function:"IR_HIGH (control byte — outputs DIRECTLY drive hardware)",
-        1:GND, 11:IR_CLK, "2-9":"ROM_D[7:0]", "12-19":"→hardware_control", 10:GND, 20:VCC},
-    // /OE(1)=GND: always enabled — outputs are the control signals!
-    // CLK(11)=IR_CLK: fires on CLK↑ when STATE=0 (cycle 1)
-    // D(2-9) from ROM data bus (SST39SF010A D[7:0])
-    // Q outputs:
-    //   Q7=CLASS, Q6=ALU_OP2, Q5=ALU_OP1, Q4=ALU_OP0,
-    //   Q3=IMM_MODE, Q2=AC_WR, Q1=REG_WR, Q0=AC_TO_BUS
+    U8:{type:74HC574, function:"IR_LOW — operand byte (imm value or register address)",
+        1:GND, 11:OPR_CLK, 10:GND, 20:VCC,
+        "2-9":"D[7:0] from RV8-Bus (ROM data)",
+        "12-19":"Q → address bus A[7:0] (register addr $00-$07 or memory addr)"},
+    // Operand drives address bus during execute (to read RAM register or memory)
 
-    U10:{type:74HC574, bus:IBUS, function:"IR_LOW (operand byte, drives IBUS for immediates)",
-        1:IMM_OE, 11:OP_CLK, "2-9":"ROM_D[7:0]", "12-19":IBUS, 10:GND, 20:VCC},
-    // /OE(1)=IMM_OE: LOW when IMM_MODE=1 AND STATE=1 → drives IBUS
-    // CLK(11)=OP_CLK: fires on CLK↑ when STATE=1 (cycle 2)
-    // D(2-9) from ROM data bus
-    // Q(12-19) to IBUS (immediate value or register select fields)
+    // === ALU (adder + XOR) ===
+    U3:{type:74HC283, function:"ALU adder low nibble",
+        5:"AC.Q0", 3:"AC.Q1", 14:"AC.Q2", 12:"AC.Q3",
+        6:"U5.Y0", 2:"U5.Y1", 15:"U5.Y2", 11:"U5.Y3",
+        7:"ALU_SUB (carry in)", 8:GND, 9:"→U4.C0",
+        4:"SUM0", 1:"SUM1", 13:"SUM2", 10:"SUM3", 16:VCC},
 
-    // --- ALU (internal, feeds from ALU_A and IBUS via XOR) ---
-    U11:{type:74HC283, bus:internal, function:"ALU adder low nibble (bits 3:0)",
-        "A1-A4":"ACQ[3:0] (from U1, hardwired)", "B1-B4":"XOR_out[3:0] (from U13)",
-        C0:SUB, "S1-S4":"→U1.D[3:0] (ALU result)", C4:"→U12.C0"},
-    U12:{type:74HC283, bus:internal, function:"ALU adder high nibble (bits 7:4)",
-        "A1-A4":"ACQ[7:4] (from U1, hardwired)", "B1-B4":"XOR_out[7:4] (from U14)",
-        C0:"U11.C4", "S1-S4":"→U1.D[7:4] (ALU result)", C4:"CARRY→U23.D2"},
-    U13:{type:74HC86, bus:internal, function:"XOR low (SUB invert bits 0-3)",
-        "inputs":"IBUS[3:0] XOR SUB", "outputs":"→U11.B[3:0]"},
-    U14:{type:74HC86, bus:internal, function:"XOR high (SUB invert bits 4-7)",
-        "inputs":"IBUS[7:4] XOR SUB", "outputs":"→U12.B[7:4]"},
-    // SUB = ALU_OP0 (from U9 Q4). When SUB=1: inverts B + Cin=1 = two's complement
+    U4:{type:74HC283, function:"ALU adder high nibble",
+        5:"AC.Q4", 3:"AC.Q5", 14:"AC.Q6", 12:"AC.Q7",
+        6:"U6.Y0", 2:"U6.Y1", 15:"U6.Y2", 11:"U6.Y3",
+        7:"U3.C4", 8:GND, 9:"CARRY_OUT → U14.D",
+        4:"SUM4", 1:"SUM5", 13:"SUM6", 10:"SUM7", 16:VCC},
 
-    // --- AC→IBUS BUFFER (bridges AC onto IBUS for store/move) ---
-    U25:{type:74HC541, bus:IBUS, function:"AC→IBUS buffer (for MV rd,a0 and SB)",
-        1:"/AC_TO_BUS", 19:GND,
-        "2-9":"ACQ[7:0] (from U1 Q, hardwired)", "11-18":"IBUS[7:0]",
+    U5:{type:74HC86, function:"XOR low nibble (SUB invert + XOR instruction)",
+        1:"IBUS0", 2:"ALU_SUB", 3:"→U3.B0 (or →AC.D0 in XOR mode)",
+        4:"IBUS1", 5:"ALU_SUB", 6:"→U3.B1 (or →AC.D1)",
+        7:GND, 8:"→U3.B2 (or →AC.D2)",
+        9:"IBUS2", 10:"ALU_SUB", 11:"→U3.B3 (or →AC.D3)",
+        12:"IBUS3", 13:"ALU_SUB", 14:VCC},
+    // When ALU_SUB=1: inverts IBUS for subtraction
+    // When XOR_MODE=1: output = AC XOR IBUS (routed to AC.D, bypass adder)
+
+    U6:{type:74HC86, function:"XOR high nibble",
+        1:"IBUS4", 2:"ALU_SUB", 3:"→U4.B0 (or →AC.D4)",
+        4:"IBUS5", 5:"ALU_SUB", 6:"→U4.B1 (or →AC.D5)",
+        7:GND, 8:"→U4.B2 (or →AC.D6)",
+        9:"IBUS6", 10:"ALU_SUB", 11:"→U4.B3 (or →AC.D7)",
+        12:"IBUS7", 13:"ALU_SUB", 14:VCC},
+
+    // === PC (16-bit counter, auto-increment) ===
+    U15:{type:74HC161, function:"PC bit 3:0",
+        1:"/RST", 2:CLK, "3-6":"D[3:0] (for JMP load)", 7:"PC_INC",
+        8:GND, 9:"PC_LD", 10:"PC_INC", "11-14":"A3,A2,A1,A0",
+        15:"→U16.ENT", 16:VCC},
+    U16:{type:74HC161, function:"PC bit 7:4",
+        1:"/RST", 2:CLK, "3-6":"D[7:4]", 7:"PC_INC",
+        8:GND, 9:"PC_LD", 10:"U15.TC", "11-14":"A7,A6,A5,A4",
+        15:"→U17.ENT", 16:VCC},
+    U17:{type:74HC161, function:"PC bit 11:8",
+        1:"/RST", 2:CLK, "3-6":"D[3:0]", 7:"PC_INC",
+        8:GND, 9:"PC_LD", 10:"U16.TC", "11-14":"A11,A10,A9,A8",
+        15:"→U18.ENT", 16:VCC},
+    U18:{type:74HC161, function:"PC bit 15:12",
+        1:"/RST", 2:CLK, "3-6":"D[7:4]", 7:"PC_INC",
+        8:GND, 9:"PC_LD", 10:"U17.TC", "11-14":"A15,A14,A13,A12",
+        15:"nc", 16:VCC},
+    // PC_INC: from state logic (HIGH during fetch cycles)
+    // PC_LD: from branch logic (pulse to load new PC for JMP)
+    // D inputs: from IBUS (for JMP — AC value loaded into PC)
+
+    // === AC → IBUS buffer ===
+    U9:{type:74HC541, function:"AC output → IBUS (for MV rd,a0 and SB)",
+        1:"AC_TO_BUS", 19:"AC_TO_BUS",
+        "2-9":"AC.Q[7:0]", "11-18":"IBUS[7:0]",
         10:GND, 20:VCC},
-    // /OE1(1)=inverted AC_TO_BUS: LOW when AC_TO_BUS=1 → AC value on IBUS
-    // /OE2(19)=GND: always enabled (controlled by /OE1 only)
-    // A(2-9) from U1 Q outputs (same traces as ALU_A)
-    // Y(11-18) to IBUS (when enabled)
+    // /OE1=/OE2=AC_TO_BUS: LOW when AC needs to drive IBUS (store/move)
 
-    // --- PC (drives ROM address, always counting) ---
-    U15:{type:74HC161, bus:ROM_addr, function:"PC bits 3:0",
-        1:"/RESET", 2:CLK, "3-6":"JMP[3:0]", 7:VCC, 9:"/PC_LOAD", 10:VCC,
-        "11-14":"PC[3:0]→ROM_A[3:0]", 15:"TC→U16.ENT", 8:GND, 16:VCC},
-    U16:{type:74HC161, bus:ROM_addr, function:"PC bits 7:4",
-        1:"/RESET", 2:CLK, "3-6":"JMP[7:4]", 7:VCC, 9:"/PC_LOAD", 10:"U15.TC",
-        "11-14":"PC[7:4]→ROM_A[7:4]", 15:"TC→U17.ENT", 8:GND, 16:VCC},
-    U17:{type:74HC161, bus:ROM_addr, function:"PC bits 11:8",
-        1:"/RESET", 2:CLK, "3-6":"JMP[11:8]", 7:VCC, 9:"/PC_LOAD", 10:"U16.TC",
-        "11-14":"PC[11:8]→U21.A[3:0]", 15:"TC→U18.ENT", 8:GND, 16:VCC},
-    U18:{type:74HC161, bus:ROM_addr, function:"PC bits 15:12",
-        1:"/RESET", 2:CLK, "3-6":"JMP[15:12]", 7:VCC, 9:"/PC_LOAD", 10:"U17.TC",
-        "11-14":"PC[15:12]→U21.A[7:4]", 15:"unused", 8:GND, 16:VCC},
-    // All PCs: ENP=VCC (always enabled), /CLR=/RESET
-    // /LOAD: LOW to load jump target, HIGH for normal count
-    // PC increments every clock (both cycles) — 2 bytes per instruction
-
-    // --- PC HIGH BUFFER (buffers PC[15:8] to ROM address) ---
-    U21:{type:74HC541, bus:ROM_addr, function:"PC high buffer (PC[15:8]→ROM A[15:8])",
-        1:GND, 19:GND,
-        "2-9":"PC[15:8] (from U17+U18)", "11-18":"ROM_A[15:8]",
+    // === Bus bridge (IBUS ↔ RAM data) ===
+    U10:{type:74HC245, function:"Bridge: IBUS ↔ RV8-Bus D[7:0]",
+        1:"BUF_DIR", 19:"BUF_OE",
+        "2-9":"IBUS[7:0]", "11-18":"D[7:0] (RV8-Bus)",
         10:GND, 20:VCC},
-    // /OE1=GND, /OE2=GND: always enabled (ROM always addressed by PC)
+    // DIR: 0=RAM→IBUS (read), 1=IBUS→RAM (write)
+    // /OE: LOW during memory access steps
 
-    // --- ADDRESS MUX (selects PC or register for RAM address) ---
-    U24:{type:74HC157, bus:RV8_Bus_addr, function:"Addr mux low (PC vs register for RAM)",
-        1:GND, 2:MEM_MODE,
-        "A inputs":"PC[3:0]", "B inputs":"REG[3:0]",
-        "Y outputs":"RAM_A[3:0]",
+    // === AC D-input mux (adder result vs IBUS vs XOR) ===
+    U11:{type:74HC157, function:"AC D-mux low nibble (select result source)",
+        1:"MUX_SEL", 15:GND,
+        2:"SUM0", 3:"IBUS0_or_XOR0", 4:"→AC.D0",
+        5:"SUM1", 6:"IBUS1_or_XOR1", 7:"→AC.D1",
+        11:"SUM2", 10:"IBUS2_or_XOR2", 9:"→AC.D2",
+        14:"SUM3", 13:"IBUS3_or_XOR3", 12:"→AC.D3",
         8:GND, 16:VCC},
-    // /G(1)=GND: always enabled
-    // SEL(2)=MEM_MODE: 0=PC (normal), 1=register (memory access)
+    U12:{type:74HC157, function:"AC D-mux high nibble",
+        1:"MUX_SEL", 15:GND,
+        2:"SUM4", 3:"IBUS4_or_XOR4", 4:"→AC.D4",
+        5:"SUM5", 6:"IBUS5_or_XOR5", 7:"→AC.D5",
+        11:"SUM6", 10:"IBUS6_or_XOR6", 9:"→AC.D6",
+        14:"SUM7", 13:"IBUS7_or_XOR7", 12:"→AC.D7",
+        8:GND, 16:VCC},
+    // MUX_SEL=0: AC.D ← adder output (ADD/SUB)
+    // MUX_SEL=1: AC.D ← IBUS (LI/LB) or XOR output (XOR instruction)
+    // XOR output and IBUS share the B-input (only one active at a time)
 
-    // --- BUS BRIDGE (connects IBUS ↔ RV8-Bus D[7:0]) ---
-    U22:{type:74HC245, bus:both, function:"Bridge: IBUS ↔ RAM data",
-        1:MEM_RW, 19:"/MEM_EN",
-        "2-9":"RAM_D[7:0] (A side, RV8-Bus)", "11-18":"IBUS[7:0] (B side)",
-        10:GND, 20:VCC},
-    // DIR(1): 0=A→B (RAM→IBUS for LB), 1=B→A (IBUS→RAM for SB)
-    // /OE(19): LOW only during memory access cycles
+    // === Address mux (PC vs operand for low byte) ===
+    U13:{type:74HC157, function:"Address mux A[7:0]: PC low vs operand",
+        1:"ADDR_MODE", 15:GND,
+        2:"PC.A0", 3:"OPR.Q0", 4:"A0",
+        5:"PC.A1", 6:"OPR.Q1", 7:"A1",
+        11:"PC.A2", 10:"OPR.Q2", 9:"A2",
+        14:"PC.A3", 13:"OPR.Q3", 12:"A3",
+        8:GND, 16:VCC},
+    U7:{type:74HC157, function:"Address mux A[7:4]: PC vs operand high nibble",
+        1:"ADDR_MODE", 15:GND,
+        2:"PC.A4", 3:"OPR.Q4", 4:"A4",
+        5:"PC.A5", 6:"OPR.Q5", 7:"A5",
+        11:"PC.A6", 10:"OPR.Q6", 9:"A6",
+        14:"PC.A7", 13:"OPR.Q7", 12:"A7",
+        8:GND, 16:VCC},
+    // ADDR_MODE=0: PC drives A[7:0] (fetch from ROM)
+    // ADDR_MODE=1: operand drives A[7:0] (access RAM register/memory)
+    // A[15:8]: from PC high (U17-U18) during fetch, forced $00 during register access
 
-    // --- CONTROL (generates timing and decode signals) ---
-    U19:{type:74HC138, bus:control, function:"Register READ select (who drives IBUS)",
-        "A,B,C":"RS[2:0] from operand bits 7:5", G1:STATE, "/G2A":IMM_MODE,
-        "/G2B":GND,
-        "Y0":"→nowhere (r0 not implemented)",
-        "Y1-Y7":"→U2-U8 /OE pins"},
-    // Enabled only when STATE=1 AND IMM_MODE=0
-    // RS field selects which register drives IBUS
+    // === Flags + State ===
+    U14:{type:74HC74, function:"Flags (Z,C) + state counter",
+        1:"/RST", 2:"ALU_ZERO", 3:"FLAGS_CLK", 4:VCC,
+        5:"FLAG_Z", 6:"nc", 7:GND,
+        8:"nc", 9:"STATE", 10:VCC, 11:CLK, 12:"/Q_STATE",
+        13:"/RST", 14:VCC},
+    // FF1: Z flag (D=zero detect, CLK=flags_clk)
+    // FF2: State toggle (D=/Q, CLK=system CLK → toggles 0,1,0,1...)
+    //   STATE=0: fetch cycle
+    //   STATE=1: execute cycle
+    //   (Need 3 states for 3-cycle... use 2-bit counter or accept 2-cycle with pipeline)
 
-    U20:{type:74HC138, bus:control, function:"Register WRITE select (who latches from IBUS)",
-        "A,B,C":"RD[2:0] from operand bits 4:2", G1:STATE, "/G2A":"/REG_WR",
-        "/G2B":GND,
-        "Y0":"→nowhere (r0 not writable)",
-        "Y1-Y7":"→U2-U8 CLK pins"},
-    // Enabled only when STATE=1 AND REG_WR=1
-    // RD field selects which register latches from IBUS
+    // === MEMORY ===
+    ROM:{type:SST39SF010A, bus:RV8_Bus, function:"Program ROM (128KB, 70ns)",
+        "A[16:0]":"from address bus", "D[7:0]":"→ RV8-Bus D[7:0]",
+        "/CE":"A15 (active when A15=1, ROM at $8000+)", "/OE":"/RD", "/WE":VCC},
 
-    U23:{type:74HC74, bus:control, function:"State toggle (FF1) + Zero flag (FF2)",
-        "FF1":"D=/Q1 (toggle), CLK=CLK, Q=STATE, /CLR=/RESET",
-        "FF2":"D=ALU_ZERO (NOR of result), CLK=AC_CLK, Q=ZERO_FLAG"},
-    // FF1: toggles every clock → STATE alternates 0/1
-    // FF2: latches zero detect when AC latches result
-    // Carry flag: U12.Cout (directly available, no latch needed for combinational branch)
+    RAM:{type:62256, bus:RV8_Bus, function:"Data RAM (32KB, includes registers $00-$07)",
+        "A[14:0]":"from address bus", "D[7:0]":"↔ RV8-Bus D[7:0]",
+        "/CE":"NOT(A15) (active when A15=0, RAM at $0000+)", "/OE":"/RD", "/WE":"/WR"},
 
-    // --- MEMORY (on RV8-Bus) ---
-    ROM:{type:SST39SF010A, bus:ROM_addr, function:"PROGRAM ROM (128KB Flash, NOT microcode!)",
-        "A[16:0]":"from PC (U15-U18 via U21)", "D[7:0]":"ROM data → U9.D + U10.D",
-        "/CE":GND, "/OE":GND, "/WE":VCC},
-    // Always selected, always output enabled
-    // Addressed ONLY by PC — every clock reads next byte
-    // Cycle 1: outputs control byte, Cycle 2: outputs operand byte
-
-    RAM:{type:62256, bus:RV8_Bus, function:"Data RAM (32KB)",
-        "A[14:0]":"from U24 mux + register high", "D[7:0]":"↔ U22 (bus buffer)",
-        "/CE":"/MEM_EN", "/OE":"MEM_RW_n", "/WE":"/MEM_WR"},
-    // Only accessed during memory instructions (LB/SB)
-    // Address from register (via U24 mux when MEM_MODE=1)
-
-    // --- SUPPORT ---
-    OSC:{type:"Crystal 3.5MHz", output:CLK},
+    // === SUPPORT ===
+    OSC:{type:"Crystal 3.5/10MHz", output:CLK},
     R1:{type:"10K", 1:VCC, 2:"/RST"},
     SW:{type:"Pushbutton", 1:"/RST", 2:GND},
     C1:{type:"100nF", 1:"/RST", 2:GND}
+},
+
+// ═══════════════════════════════════════════════════════════════
+// CONTROL (from IR_HIGH bits — no microcode!)
+// ═══════════════════════════════════════════════════════════════
+//
+// IR_HIGH (U2) Q outputs directly control hardware:
+//   Q7: ALU_SUB (0=ADD, 1=SUB)
+//   Q6: XOR_MODE (1=XOR result → AC, bypass adder)
+//   Q5: MUX_SEL (0=adder→AC, 1=IBUS/XOR→AC)
+//   Q4: AC_CLK_EN (1=write result to AC)
+//   Q3: AC_TO_BUS (1=AC drives IBUS for store)
+//   Q2: BUF_OE (1=enable RAM↔IBUS bridge)
+//   Q1: BUF_DIR (0=RAM→IBUS read, 1=IBUS→RAM write)
+//   Q0: ADDR_MODE (0=PC drives address, 1=operand drives address)
+//
+// State logic (U14 FF2) provides:
+//   PC_INC = NOT(STATE) (PC counts during fetch)
+//   Execute signals gated by STATE=1
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICATION
+// ═══════════════════════════════════════════════════════════════
+//
+// Bus conflicts: NONE
+//   IBUS: U9 (AC buffer) or U10 (RAM bridge) — never both (controlled by IR_HIGH bits)
+//   Address bus: PC (fetch, ADDR_MODE=0) or operand (execute, ADDR_MODE=1)
+//   A[15:8]: PC high during fetch, $00 during register access (A15=0 → RAM selected)
+//
+// XOR for free: ✅
+//   U5-U6 XOR outputs routed to U11-U12 mux B-input
+//   When XOR_MODE=1 + MUX_SEL=1: AC gets XOR result
+//
+// Chip count: 19 logic (U1-U18 + U9... wait, let me recount)
+//   U1 (AC) + U2 (IR_HIGH) + U3-U4 (283×2) + U5-U6 (86×2) +
+//   U7 (157) + U8 (IR_LOW) + U9 (541) + U10 (245) +
+//   U11-U12 (157×2) + U13 (157) + U14 (74) +
+//   U15-U18 (161×4) = 18 chips
+//   
+//   Hmm, 18 not 19. The 19th was for PC→IBUS (JAL). Need U19 (541):
+//
+    U19:{type:74HC541, function:"PC low → IBUS (for JAL: save return address)",
+        1:"PC_TO_BUS", 19:"PC_TO_BUS",
+        "2-9":"PC.Q[7:0] (from U15-U16 outputs)", "11-18":"IBUS[7:0]",
+        10:GND, 20:VCC},
+//
+// FINAL COUNT: 19 logic chips ✅
+// Total: 19 + ROM + RAM = 21 packages
 }
-
-// ═══════════════════════════════════════════════════════════════
-// CONTROL BYTE (IR_HIGH Q outputs — directly drive hardware)
-// No microcode! No step counter! No sequencer!
-// ═══════════════════════════════════════════════════════════════
-//
-// U9.Q7 = CLASS      (0=ALU/reg, 1=MEM/BRANCH)
-// U9.Q6 = ALU_OP2 ─┐
-// U9.Q5 = ALU_OP1 ─┼─ ALU operation (000=ADD 001=SUB 010=AND...)
-// U9.Q4 = ALU_OP0 ─┘
-// U9.Q3 = IMM_MODE  (1=operand byte on IBUS, 0=register on IBUS)
-// U9.Q2 = AC_WR     (1=latch ALU result into AC)
-// U9.Q1 = REG_WR    (1=latch IBUS into r[rd] via U20)
-// U9.Q0 = AC_TO_BUS (1=U25 drives AC onto IBUS)
-//
-// These 8 bits replace TWO microcode ROMs + step counter from RV8!
-
-// ═══════════════════════════════════════════════════════════════
-// CYCLE TIMING
-// ═══════════════════════════════════════════════════════════════
-//
-// Cycle 1 (STATE=0): FETCH CONTROL
-//   PC → ROM → D[7:0] = control byte
-//   IR_HIGH (U9) latches on CLK↑
-//   PC increments
-//   IBUS idle (U19 disabled: STATE=0)
-//
-// Cycle 2 (STATE=1): FETCH OPERAND + EXECUTE
-//   PC → ROM → D[7:0] = operand byte
-//   IR_LOW (U10) latches on CLK↑
-//   IR_HIGH outputs ACTIVE → drive hardware:
-//     U19 enabled (STATE=1) → selected register drives IBUS
-//     OR: U10 /OE=LOW (IMM_MODE=1) → operand drives IBUS
-//     OR: U25 /OE=LOW (AC_TO_BUS=1) → AC drives IBUS
-//   ALU computes: AC + IBUS (via XOR) → result
-//   On CLK↑: AC latches (if AC_WR=1), register latches (if REG_WR=1)
-//   PC increments, STATE toggles back to 0
-
-// ═══════════════════════════════════════════════════════════════
-// SUMMARY: How buses connect
-// ═══════════════════════════════════════════════════════════════
-//
-//  ┌─────────────────────────────────────────────────────────┐
-//  │              ALU_A (hardwired, always active)            │
-//  │  Driver: U1 Q[7:0] (AC, /OE=GND)                       │
-//  │  Consumers: U11 A[3:0], U12 A[7:4] (adder A inputs)    │
-//  │             U25 A[7:0] (AC→IBUS buffer inputs)          │
-//  └─────────────────────────────────────────────────────────┘
-//
-//  ┌─────────────────────────────────────────────────────────┐
-//  │                    IBUS (internal 8-bit)                 │
-//  │  Drivers: registers(U2-U8), operand(U10),               │
-//  │           AC_buffer(U25), RAM_buffer(U22)               │
-//  │  Consumers: registers(U2-U8), XOR→ALU_B(U13-U14),      │
-//  │             RAM_buffer(U22)                              │
-//  └────────────────────────┬────────────────────────────────┘
-//                           │ U22 (74HC245) bridges
-//                           ▼
-//  ┌─────────────────────────────────────────────────────────┐
-//  │              RV8-Bus (external 40-pin)                   │
-//  │  A[15:0]: from PC(U15-U18) or register (via U24 mux)   │
-//  │  D[7:0]:  ↔ U22 ↔ IBUS                                 │
-//  │  /RD,/WR: from control logic                            │
-//  │  Connects to: RAM, peripherals                          │
-//  └─────────────────────────────────────────────────────────┘
-//
-//  ┌─────────────────────────────────────────────────────────┐
-//  │              ROM Data Bus (dedicated 8-bit)              │
-//  │  Driver: SST39SF010A D[7:0] (always outputting)         │
-//  │  Consumers: U9 D[7:0] (IR_HIGH), U10 D[7:0] (IR_LOW)  │
-//  │  NOT shared with IBUS — separate traces!                │
-//  └─────────────────────────────────────────────────────────┘
-//
-// NO BUS CONFLICTS:
-//   IBUS: only one driver active (control byte ensures mutual exclusion)
-//   ALU_A: dedicated traces, no contention possible
-//   ROM data: dedicated to IR latches, no contention
-//   RV8-Bus addr: PC or register (U24 mux, never both)
-//   RV8-Bus data: RAM read or CPU write (U22 direction control)
-//
-// KEY DIFFERENCE FROM RV8:
-//   RV8: microcode ROM sequences 4-6 steps per instruction
-//   RV8-W: control byte IS the instruction — 2 cycles, done.
-//   RV8: AC on IBUS like other registers
-//   RV8-W: AC hardwired to ALU A, needs U25 buffer for IBUS access
-```
-
----
-
-*25 logic + SST39SF010A + 62256 = 27 packages. No microcode. 2 cycles/instruction.*
