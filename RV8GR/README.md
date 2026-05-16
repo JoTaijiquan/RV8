@@ -1,6 +1,6 @@
 # RV8-GR — Reduced ISA, No Microcode, RAM Registers
 
-**19 logic chips. No microcode. Plays games. Mostly compatible with RV8.**
+**21 logic chips. No microcode. Plays games. Mostly compatible with RV8.**
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Spec | Value |
 |------|-------|
-| Logic chips | 19 |
-| Total | 21 |
+| Logic chips | 21 |
+| Total | 23 |
 | ISA | 21 instructions (~80% RV8 compatible) |
 | Speed | 1.7 MIPS @ 10 MHz |
 | Registers | 8 in RAM ($00-$07) |

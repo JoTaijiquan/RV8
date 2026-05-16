@@ -8,14 +8,15 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 
 | | **RV8** | **RV8-R** | **RV8-G** | **RV8-GR** |
 |--|:---:|:---:|:---:|:---:|
-| **Logic chips** | 27 | **17** | 27 | **19** |
-| **Total** | 29 | 20 | 29 | 21 |
+| **Logic chips** | 27 | **18** | 28 | **21** |
+| **Total** | 29 | 21 | 30 | 23 |
 | **MIPS @10MHz** | 1.25 | 1.0 | **1.7** | **1.7** |
 | **ISA** | Full (35) | Full (35) | Full (35) | Reduced (21) |
 | **Microcode** | Yes | Yes | **No** | **No** |
-| **AND/OR/XOR** | ✅ | ✅ | ✅ | ❌ |
-| **Binary compatible** | — | ✅=RV8 | ✅=RV8 | ❌ |
+| **AND/OR/XOR** | ✅ | ✅ | ✅ | ❌ (XOR only) |
+| **Binary compatible** | — | ✅=RV8 | ✅=RV8 | ~80% |
 | **Games** | ✅ | ✅ | ✅ | ✅ |
+| **Traced/Verified** | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -24,9 +25,9 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 | Priority | Build |
 |----------|-------|
 | **Learn microcode + proven** | **RV8** (27 chips) |
-| **Fewest chips + full ISA** | **RV8-R** (17 chips) |
-| **Full ISA + no microcode** | **RV8-G** (27 chips) |
-| **No microcode + cheapest games** | **RV8-GR** (19 chips) |
+| **Fewest chips + full ISA** | **RV8-R** (18 chips) |
+| **Full ISA + no microcode** | **RV8-G** (28 chips) |
+| **No microcode + cheapest games** | **RV8-GR** (21 chips) |
 
 ---
 
@@ -35,9 +36,9 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 | Variant | Pro | Con |
 |---------|-----|-----|
 | **RV8** | Proven, working Verilog (8/8) | Most chips (27), needs microcode |
-| **RV8-R** | Fewest chips (17), full ISA | Needs 2× Flash programmer |
-| **RV8-G** | Full ISA, no microcode, fastest | Same chips as RV8, complex wiring |
-| **RV8-GR** | No microcode, cheap (19), games | Own ISA, no logic ops |
+| **RV8-R** | Fewest chips (18), full ISA | Needs 2× Flash programmer |
+| **RV8-G** | Full ISA, no microcode, fastest | Most chips (28), complex wiring |
+| **RV8-GR** | No microcode, cheap (21), games | Reduced ISA (~80% compatible) |
 
 ---
 
@@ -70,9 +71,9 @@ RV8/
 
 | | RV8 | RV8-R | RV8-G | RV8-GR |
 |--|:---:|:---:|:---:|:---:|
-| Design doc | ✅ | ✅ | ✅ | ✅ |
+| Instruction trace | ✅ | ✅ | ✅ | ✅ |
 | Verilog | ✅ 8/8 | ⬜ | ⬜ | ⬜ |
-| WiringGuide | ✅ | ⬜ | ⬜ | ✅ |
+| WiringGuide | ✅ | ✅ | ✅ | ✅ |
 | Module guide | ✅ (Thai+EN) | ⬜ | ✅ | ✅ |
 | Assembler | ⬜ | ⬜ | ⬜ | ⬜ |
 | Programmer | ✅ | ✅ | ✅ | ✅ |

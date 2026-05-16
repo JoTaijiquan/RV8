@@ -1,11 +1,11 @@
 # RV8-G — Full ISA, No Microcode, RAM Registers
 
-**27 logic chips. Full RISC-V ISA. No microcode. 1.7 MIPS @ 10 MHz.**
+**28 logic chips. Full RISC-V ISA. No microcode. 1.7 MIPS @ 10 MHz.**
 
 | Spec | Value |
 |------|-------|
-| Logic chips | 27 |
-| Total | 29 |
+| Logic chips | 28 |
+| Total | 30 |
 | ISA | Full (35 instructions, same as RV8) |
 | Speed | 1.7 MIPS @ 10 MHz |
 | Registers | 8 in RAM |
