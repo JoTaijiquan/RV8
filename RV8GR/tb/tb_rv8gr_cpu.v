@@ -99,6 +99,8 @@ module tb_rv8gr_cpu;
     // JMP  addr:       JUMP=1                           = 8'h01
 
     initial begin
+        $dumpfile("rv8gr.vcd");
+        $dumpvars(0, tb_rv8gr_cpu);
         errors = 0;
         test_num = 0;
 
