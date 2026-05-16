@@ -96,3 +96,41 @@ Total: 22 logic chips + ROM + RAM = 24 packages
 | Total | 23 | **24** |
 
 ## Optional — not required for basic build. Add later when SD card support is needed.
+
+---
+
+## PREFERRED: Bank switch on TRAINER BOARD (not CPU board)
+
+**CPU board stays at 21 chips. Bank switch lives on Trainer board.**
+
+```
+CPU Board (21 chips, pure, simple):
+  PC → A[15:0] → RV8-Bus (no bank logic)
+
+Trainer Board (via RV8-Bus):
+  Intercepts A15 on bus
+  XOR(A15, BANK) → routes to ROM/RAM
+  BANK flip-flop set by I/O write ($FF00)
+  SD card (SPI) for loading programs
+  LEDs, step button, etc.
+```
+
+### How CPU sets BANK (via I/O write on bus):
+```asm
+li    $01
+sb    $FF         ; write to Trainer I/O address → BANK=1
+j     $00         ; PC=$8100, XOR'd by Trainer → fetches from RAM $0100
+```
+
+### Why this is better:
+- CPU board is universal (works with or without Trainer)
+- No CPU hardware change for bank switch
+- Trainer board adds features non-invasively via bus
+- Same CPU board works with Programmer board (no bank needed)
+- SD card, bank switch, LEDs all on one expansion board
+
+### Memorize for future Trainer board design:
+- Bank switch XOR on A15 (1 gate from 74HC86)
+- BANK flip-flop (1 FF from 74HC74) set by bus write to $FF00
+- SD card SPI interface (directly on Trainer board)
+- Load sequence: Trainer reads SD → writes to RAM via bus → sets BANK → releases CPU
