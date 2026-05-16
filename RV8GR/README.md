@@ -182,3 +182,31 @@ This needs a mux to select: AC.D ← adder output OR XOR output. That's the same
 | — | 62256 | RAM (32KB, includes registers $00-$07) |
 
 **No microcode. No Flash lookup. Control byte bits + 3 derived gates = all signals.**
+
+---
+
+## Status
+
+- ✅ Design document (00_design.md)
+- ✅ ISA reference (01_isa_reference.md)
+- ✅ Instruction trace (02_instruction_trace.md) — verified 21 chips
+- ✅ WiringGuide (03_wiring_guide.md) — bus-centric, no conflicts
+- ✅ Understand by Module (04_understand_by_module.md)
+- ✅ Verilog model (rv8gr_cpu.v) — **11/11 tests pass**
+- ⬜ Assembler
+- ⬜ Physical build
+
+## Files
+
+```
+RV8GR/
+├── README.md
+├── rv8gr_cpu.v           ← Verilog (11/11 pass)
+├── tb/tb_rv8gr_cpu.v     ← testbench
+└── doc/
+    ├── 00_design.md
+    ├── 01_isa_reference.md
+    ├── 02_instruction_trace.md
+    ├── 03_wiring_guide.md
+    └── 04_understand_by_module.md
+```

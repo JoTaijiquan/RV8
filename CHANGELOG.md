@@ -10,9 +10,11 @@
 - 27 logic chips, full ISA, no microcode, RAM registers
 - Binary compatible with RV8, fastest (1.7 MIPS)
 
-### RV8-GR v0.1
-- 19 logic chips, reduced ISA (20 instr), no microcode, RAM registers
-- Own ISA (not compatible), cheapest that plays games
+### RV8-GR v0.2 — 2026-05-16
+- Verilog model: 11/11 tests pass (LI,ADDI,SUBI,ADD,XOR,MV,BEQ,BNE,loop)
+- Full doc set: design, ISA reference, trace, WiringGuide, understand_by_module
+- Honest chip count: 21 logic (traced and verified)
+- 3-cycle execution, ~3.3 MIPS @ 10 MHz
 
 ### RV8 v0.5
 - 27 logic chips, full ISA, hardware registers, microcode

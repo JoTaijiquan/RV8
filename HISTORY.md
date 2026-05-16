@@ -38,4 +38,4 @@
 | 2026-05-10 | Project started |
 | 2026-05-14 | Programmer board complete |
 | 2026-05-15 | RV8 microcode working (8/8 tests) |
-| 2026-05-16 | **Final family defined: RV8/RV8-R/RV8-G/RV8-GR** |
+| 2026-05-16 | **Final family: RV8(27)/RV8-R(18)/RV8-G(28)/RV8-GR(21), all traced+verified** |
