@@ -121,6 +121,16 @@ Part:{
     // /OE(1)=GND: ALWAYS drives (Q→adder A inputs + U25 buffer inputs)
     // CLK(11)=AC_CLK: gated CLK, fires when AC_WR=1 AND STATE=1 AND CLK↑
     // D(2-9) from ALU result (adder Σ outputs, direct wire)
+    //   NOTE: For XOR instruction, route XOR chip output (U13-U14) to AC D inputs
+    //   instead of adder output. Use IR_HIGH control bit to select:
+    //     ALU_OP=ADD/SUB: AC.D ← adder output (U11.S + U12.S)
+    //     ALU_OP=XOR:     AC.D ← XOR output (U13.Y + U14.Y, before adder)
+    //   Implementation: cascade the existing AC D-input path:
+    //     U13-U14 XOR outputs already exist (used for SUB invert)
+    //     When ALU_SUB=0 AND XOR_MODE=1: XOR output = AC XOR IBUS (not inverted B)
+    //     Route via same wires, just don't feed through adder
+    //     Needs: 1 control bit in IR_HIGH to select XOR vs ADD result → AC.D
+    //     No extra chip — just wiring choice on existing mux/path
     // Q(12-19) hardwired to U11.A, U12.A, U25.A (always)
 
     // --- REGISTERS (on IBUS) ---
