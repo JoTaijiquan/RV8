@@ -64,3 +64,13 @@ The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs
 - [ ] Programmer board physical build
 - [ ] BASIC interpreter
 - [ ] Video circuit (Apple II style, shared RAM)
+
+## Reference: Gigatron TTL Computer (proven design)
+
+- 34 TTL chips, NO microprocessor, runs games + VGA video + sound
+- Harvard architecture, 16-bit wide ROM (instruction = control bits)
+- 6 chips decode 8 instruction bits → 19 control signals (no EEPROM!)
+  - 74HC138 ×2 + 74HC153 + 74HC139 + 74HC240 + 74HC32
+- CPU bit-bangs VGA directly (software replaces video chip)
+- vCPU: interpreted virtual CPU in software (34 instructions, runs from RAM)
+- This is the "wide ROM" approach that solves RV8-G's decode problem
