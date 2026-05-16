@@ -242,10 +242,29 @@ Or use 2× AT28C256 (cheaper, 32KB each, same 14 address bits):
 | Bus buffer | 1× 245 |
 | Flags | 1× 74 |
 | Step counter | 1× 161 |
-| Microcode Flash | **2× SST39SF010A** (or 2× AT28C256) |
-| ROM (program) | 1× AT28C256 |
+| Microcode ROM | (see options below) |
+| Program ROM | 1× AT28C256 |
 | RAM | 1× 62256 |
-| **Total** | **27 logic + 1 ROM + 1 RAM = 29** |
+
+### Microcode ROM options:
+
+| Option | Chips | Output bits | Dev-friendly? | For final build? |
+|--------|:-----:|:-----------:|:---:|:---:|
+| 2× AT28C256 (8-bit EEPROM) | 2 | 16 | ✅ Easy reprogram | ⚠️ 2 chips |
+| 2× SST39SF010A (8-bit Flash) | 2 | 16 | ⚠️ Sector erase | ⚠️ 2 chips |
+| **1× 27C1024 (16-bit EPROM)** | **1** | **16** | ❌ UV erase | ✅ **Single chip, DIP-40** |
+
+### Total chip count:
+
+| Phase | Microcode | Logic total | + ROM + RAM | Grand total |
+|-------|-----------|:-----------:|:-----------:|:-----------:|
+| Development | 2× AT28C256 | 27 | +2 | **29** |
+| Final build | 1× 27C1024 | 26 | +2 | **28** |
+
+### Recommendation:
+- **Develop** with 2× AT28C256 (easy to reprogram, available locally)
+- **Ship** with 1× 27C1024 (single chip, 16-bit wide, DIP-40, 45ns)
+- Design supports both (same address bus, WiringGuide notes both options)
 
 ---
 
