@@ -1,76 +1,79 @@
 # RV8 Project — Task Tracker
 
-**Last updated**: 2026-05-16 19:30
+**Last updated**: 2026-05-16 23:11
+**Focus**: RV8-WR (19 chips, no microcode, cheapest that plays games)
 
 ---
 
-## ✅ Completed
+## ✅ Completed (RV8-WR)
 
-- [x] RV8 design (27 chips, RISC-V reg-reg, Flash microcode)
-- [x] RV8 Verilog model (19/21 pass)
-- [x] RV8 WiringGuide (verified, address conflict fixed)
-- [x] RV8 ISA reference (RISC-V aligned, 35 instructions)
-- [x] RV8 instruction trace (found step counter + 2nd Flash needed)
-- [x] RV8 Understand_by_Module.md (student guide)
-- [x] RV8-W design (24 chips, accumulator, no microcode, 5 MIPS)
-- [x] RV8-W ISA (RISC-V naming, 25 instructions)
-- [x] RV8-S design (20 chips, serial ALU, same ISA as RV8)
-- [x] RV8-S WiringGuide (20 chips, issues noted)
-- [x] RV8-G archived (broken hardware, 32 chips honest)
-- [x] Programmer board (ESP32 + TXB0108, firmware, PC tools)
-- [x] RV8-Bus defined (40-pin, compatible with all variants)
-- [x] Reference summary (Gigatron, SAP-1, Nand2Tetris)
+- [x] Design (19 chips, RAM registers, accumulator, no microcode)
+- [x] ISA defined (21 instructions, ~80% RV8 compatible, XOR free)
+- [x] Control byte encoding (8-bit + 3 derived gates)
+- [x] WiringGuide (bus-centric, 19 chips, verified no conflicts)
+- [x] README with chip list and ISA table
+- [x] Programmer board (shared, works with all variants)
 
 ---
 
-## 🔧 Decision Needed
+## ⬜ TODO — RV8-WR (next steps in order)
 
-**Which variant to build first?**
-
-| | RV8-S | RV8-W | RV8 |
-|--|:---:|:---:|:---:|
-| Chips | 20 | 24 | 27 |
-| Speed | 1 MIPS | 5 MIPS | 2.17 MIPS |
-| Complexity | Low | Medium | High |
-| Games | ⚠️ simple | ✅ | ✅ |
-
----
-
-## ⬜ TODO — Whichever variant chosen
-
-| Task | Priority | Notes |
-|------|:--------:|-------|
-| Complete instruction trace (verify ALL signals) | HIGH | Prevent another redesign |
-| Fix Verilog to match hardware | HIGH | Current model is behavioral |
-| Microcode generator (if RV8/RV8-S) | HIGH | Flash .bin content |
-| Assembler (Python) | HIGH | Write programs |
-| Build Programmer board physically | HIGH | Need it to flash anything |
-| First program (Fibonacci) | MEDIUM | Proof of life |
-| Build guide (labs, Thai+English) | MEDIUM | For students |
-| Breadboard build | MEDIUM | Physical verification |
-
-## ⬜ TODO — After CPU works
-
-| Task | Priority | Notes |
-|------|:--------:|-------|
-| BASIC interpreter | MEDIUM | ~8-12KB ROM |
-| Video circuit (Apple II style) | LOW | Shared RAM, counters + shift reg |
-| Sound (SN76489) | LOW | Expansion slot |
-| Keyboard (PS/2) | LOW | Expansion slot |
-| Trainer board | LOW | Single-step, LEDs, 7-seg |
+| # | Task | Priority | Notes |
+|:-:|------|:--------:|-------|
+| 1 | **Instruction trace** (trace ADD, LB, SB, BEQ through hardware) | HIGH | Verify WiringGuide actually works |
+| 2 | **Verilog model** (rv8wr_cpu.v, match hardware exactly) | HIGH | Model the 3-cycle, control-byte-driven design |
+| 3 | **Testbench** (all 21 instructions) | HIGH | Prove ISA works |
+| 4 | **Assembler** (rv8wr_asm.py) | HIGH | Need it to write programs |
+| 5 | **Build Programmer board** (physical) | HIGH | Need it to flash ROM |
+| 6 | **Order parts** (19 chips + ROM + RAM) | MEDIUM | ~$15 total |
+| 7 | **Breadboard build** | MEDIUM | The real test |
+| 8 | **First program** (LED blink or Fibonacci) | MEDIUM | Proof of life |
+| 9 | **Understand by Module** (Thai+English) | MEDIUM | For students |
+| 10 | **BASIC interpreter** | LOW | After hardware proven |
 
 ---
 
-## Priority Order
+## ⬜ TODO — Other variants (lower priority)
+
+| Task | Variant | Notes |
+|------|---------|-------|
+| Verilog for RV8-R | RV8-R | Same as RV8 minus register chips |
+| WiringGuide for RV8-R | RV8-R | Same as RV8 minus registers |
+| Complete RV8 microcode (all 35 instr) | RV8 | Currently 8/8, need all 35 |
+
+---
+
+## Priority Order (RV8-WR focus)
 
 ```
-1. DECIDE which variant to build
-2. Complete instruction trace for chosen variant
-3. Build Programmer board (physical)
-4. Write assembler
-5. Write microcode generator (if needed)
-6. Build CPU on breadboard
-7. First program running!
-8. BASIC interpreter
-9. Full computer (video + sound + keyboard)
+1. Instruction trace (verify hardware paths)
+2. Verilog model (prove design in simulation)
+3. Testbench (all 21 instructions pass)
+4. Assembler (write programs)
+5. Build Programmer board
+6. Order chips
+7. Build on breadboard
+8. First program running!
 ```
+
+---
+
+## Parts to order (RV8-WR)
+
+| Part | Qty | Source | Est. cost |
+|------|:---:|--------|:---------:|
+| 74HC574 (DIP-20) | 3 | บ้านหม้อ | ฿30 |
+| 74HC283 (DIP-16) | 2 | Mouser/Shopee | ฿40 |
+| 74HC86 (DIP-14) | 2 | บ้านหม้อ | ฿15 |
+| 74HC157 (DIP-16) | 4 | บ้านหม้อ | ฿30 |
+| 74HC161 (DIP-16) | 4 | บ้านหม้อ | ฿30 |
+| 74HC541 (DIP-20) | 2 | Shopee/RS | ฿25 |
+| 74HC245 (DIP-20) | 1 | บ้านหม้อ | ฿10 |
+| 74HC74 (DIP-14) | 1 | บ้านหม้อ | ฿8 |
+| SST39SF010A (PDIP-32) | 1 | Mouser | ฿100 |
+| 62256 (DIP-28) | 1 | Shopee | ฿50 |
+| Crystal 3.5MHz | 1 | บ้านหม้อ | ฿15 |
+| Breadboard | 2 | Shopee | ฿150 |
+| LED + 330Ω | 10 | บ้านหม้อ | ฿20 |
+| Misc (caps, resistors, wires) | — | — | ฿50 |
+| **Total** | | | **~฿575 (~$16)** |
