@@ -13,8 +13,40 @@
 | ISA | 21 instructions (~80% RV8 compatible) |
 | Speed | 1.7 MIPS @ 10 MHz |
 | Registers | 8 in RAM ($00-$07) |
-| Control | **None** — instruction bits drive hardware directly |
-| Compatibility | ~70% of RV8 programs run unchanged |
+| Control | 8-bit instruction byte + ~3 gates (no microcode, no Flash lookup) |
+| Compatibility | ~80% of RV8 programs (missing AND/OR/SRL only) |
+
+---
+
+## Instruction Encoding (2 bytes: control + operand)
+
+### Byte 0 — Control (encodes instruction type, 8 bits):
+```
+Bit 7: ALU_SUB      — 0=ADD, 1=SUB
+Bit 6: XOR_MODE     — 1=XOR result to AC (bypass adder)
+Bit 5: MUX_SEL      — 0=ALU result→AC, 1=IBUS→AC (for LI/LB)
+Bit 4: AC_WR        — 1=write to AC this cycle
+Bit 3: SOURCE_TYPE  — 0=immediate (operand=value), 1=register (operand=RAM addr)
+Bit 2: STORE        — 1=write AC to RAM[operand]
+Bit 1: BRANCH       — 1=conditional jump (check Z flag)
+Bit 0: JUMP         — 1=unconditional PC load
+```
+
+### Byte 1 — Operand (data or address, 8 bits):
+```
+If SOURCE_TYPE=0: immediate value (0-255)
+If SOURCE_TYPE=1: register address ($00-$07)
+If STORE=1:       destination RAM address
+If BRANCH/JUMP:   target address
+```
+
+### Derived signals (2-3 gates from spare logic, no extra chips):
+```
+ADDR_MODE = SOURCE_TYPE OR STORE
+BUF_OE    = SOURCE_TYPE OR STORE
+BUF_DIR   = STORE
+AC_TO_BUS = STORE
+```
 
 ---
 
