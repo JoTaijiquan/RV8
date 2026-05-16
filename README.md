@@ -58,7 +58,8 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 RV8/
 ├── RV8/            ← 27 chips, hardware regs, microcode (proven)
 ├── RV8R/           ← 17 chips, RAM regs, microcode (fewest + full ISA)
-├── RV8W/           ← RV8-WF (27) + RV8-WR (19), no microcode
+├── RV8WF/          ← 27 chips, full ISA, no microcode, fastest
+├── RV8WR/          ← 19 chips, reduced ISA, no microcode, cheapest games
 ├── Programmer/     ← ESP32 board (works with all)
 ├── Old_Design/     ← Archived (RV8-G, RV8-S, RV808, RV801, original)
 ├── Reference/      ← Gigatron, SAP-1, Nand2Tetris
