@@ -1,4 +1,4 @@
-# RV8-WF — Full ISA, No Microcode, RAM Registers
+# RV8-W — Full ISA, No Microcode, RAM Registers
 
 **27 logic chips. Full RISC-V ISA. No microcode. 1.7 MIPS @ 10 MHz.**
 

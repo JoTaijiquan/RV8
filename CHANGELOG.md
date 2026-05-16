@@ -6,7 +6,7 @@
 - 17 logic chips, full ISA, RAM registers, microcode
 - Binary compatible with RV8
 
-### RV8-WF v0.1
+### RV8-W v0.1
 - 27 logic chips, full ISA, no microcode, RAM registers
 - Binary compatible with RV8, fastest (1.7 MIPS)
 
