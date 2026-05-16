@@ -11,7 +11,7 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 | **Logic chips** | 27 | **17** | 27 | **19** |
 | **Total** | 29 | 20 | 29 | 21 |
 | **MIPS @10MHz** | 1.25 | 1.0 | **1.7** | **1.7** |
-| **ISA** | Full (35) | Full (35) | Full (35) | Reduced (20) |
+| **ISA** | Full (35) | Full (35) | Full (35) | Reduced (21) |
 | **Microcode** | Yes | Yes | **No** | **No** |
 | **AND/OR/XOR** | ✅ | ✅ | ✅ | ❌ |
 | **Binary compatible** | — | ✅=RV8 | ✅=RV8 | ❌ |
@@ -73,6 +73,6 @@ RV8/
 | Design doc | ✅ | ✅ | ✅ | ✅ |
 | Verilog | ✅ 8/8 | ⬜ | ⬜ | ⬜ |
 | WiringGuide | ✅ | ⬜ | ⬜ | ✅ |
-| Module guide | ✅ (Thai+EN) | ⬜ | ✅ | ⬜ |
+| Module guide | ✅ (Thai+EN) | ⬜ | ✅ | ✅ |
 | Assembler | ⬜ | ⬜ | ⬜ | ⬜ |
 | Programmer | ✅ | ✅ | ✅ | ✅ |

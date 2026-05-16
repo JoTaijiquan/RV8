@@ -10,7 +10,7 @@
 |------|-------|
 | Logic chips | 19 |
 | Total | 21 |
-| ISA | 20 instructions (subset of RV8) |
+| ISA | 21 instructions (~80% RV8 compatible) |
 | Speed | 1.7 MIPS @ 10 MHz |
 | Registers | 8 in RAM ($00-$07) |
 | Control | **None** — instruction bits drive hardware directly |
