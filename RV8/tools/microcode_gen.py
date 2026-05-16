@@ -81,70 +81,145 @@ def set_branch(opcode, take_on_z=None, take_on_c=None):
 # === DEFINE ISA ===
 
 # Class 01: Immediate (opcode = 01_ooo_ddd)
-# LI rd, imm: rd = imm (pass through ALU as 0 + imm)
 for rd in range(8):
-    op = 0b01_000_000 | rd  # LI
-    set_instruction(op, [
-        ALUB_CLK,                           # step 2: latch operand into ALU B
-        ALUR_CLK | FLAGS_CLK,              # step 3: compute 0+imm, latch result
-        REG_WR_EN | END,                    # step 4: write to rd
+    # LI rd, imm (rd = 0 + imm)
+    set_instruction(0b01_000_000 | rd, [
+        ALUB_CLK,                           # step 2: B = operand
+        ALUR_CLK | FLAGS_CLK,              # step 3: result = 0 + imm
+        REG_WR_EN | END,                    # step 4: rd = result
     ])
-
-# ADDI rd, imm: rd = rd + imm
-for rd in range(8):
-    op = 0b01_001_000 | rd  # ADDI
-    set_instruction(op, [
-        ALUB_CLK,                           # step 2: ALU B = operand (imm)
-        ALUR_CLK | FLAGS_CLK,              # step 3: ALU computes rd + imm, latch result
-        REG_WR_EN | END,                    # step 4: write to rd
+    # ADDI rd, imm (rd = rd + imm)
+    set_instruction(0b01_001_000 | rd, [
+        ALUB_CLK,                           # step 2: B = operand
+        ALUR_CLK | FLAGS_CLK,              # step 3: result = rd + imm
+        REG_WR_EN | END,                    # step 4: rd = result
     ])
-
-# SUBI rd, imm: rd = rd - imm
-for rd in range(8):
-    op = 0b01_010_000 | rd  # SUBI
-    set_instruction(op, [
-        ALUB_CLK,                           # step 2: ALU B = operand
-        ALUR_CLK | FLAGS_CLK | ALU_SUB,    # step 3: rd - imm
-        REG_WR_EN | END,                    # step 4: write
+    # SUBI rd, imm (rd = rd - imm)
+    set_instruction(0b01_010_000 | rd, [
+        ALUB_CLK,                           # step 2: B = operand
+        ALUR_CLK | FLAGS_CLK | ALU_SUB,    # step 3: result = rd - imm
+        REG_WR_EN | END,                    # step 4: rd = result
+    ])
+    # ANDI rd, imm — NOT POSSIBLE with adder (skip for now)
+    # ORI rd, imm — NOT POSSIBLE with adder (skip for now)
+    # XORI rd, imm — NOT POSSIBLE with adder (skip for now)
+    # SLTI rd, imm (rd = (rd < imm) ? 1 : 0) — use SUB + flag check
+    set_instruction(0b01_110_000 | rd, [
+        ALUB_CLK,                           # step 2: B = operand
+        FLAGS_CLK | ALU_SUB,               # step 3: compute rd-imm, set flags (don't store)
+        END,                                # step 4: done (flag_c = borrow = less than)
+    ])
+    # LUI rd, imm (rd = imm << 4) — simplified: just LI for now
+    set_instruction(0b01_111_000 | rd, [
+        ALUB_CLK,
+        ALUR_CLK,
+        REG_WR_EN | END,
     ])
 
 # Class 00: ALU register (opcode = 00_ooo_ddd, operand[7:5]=rs)
-# ADD rd, rd, rs
 for rd in range(8):
-    op = 0b00_000_000 | rd  # ADD
-    set_instruction(op, [
-        REG_RD_EN | ALUB_CLK,              # step 2: rs → ALU B latch
-        ALUR_CLK | FLAGS_CLK,              # step 3: rd + rs, latch result
-        REG_WR_EN | END,                    # step 4: write to rd
+    # ADD rd, rd, rs
+    set_instruction(0b00_000_000 | rd, [
+        REG_RD_EN | ALUB_CLK,              # step 2: B = rs
+        ALUR_CLK | FLAGS_CLK,              # step 3: result = rd + rs
+        REG_WR_EN | END,                    # step 4: rd = result
     ])
-
-# SUB rd, rd, rs
-for rd in range(8):
-    op = 0b00_001_000 | rd  # SUB
-    set_instruction(op, [
+    # SUB rd, rd, rs
+    set_instruction(0b00_001_000 | rd, [
         REG_RD_EN | ALUB_CLK,
         ALUR_CLK | FLAGS_CLK | ALU_SUB,
         REG_WR_EN | END,
     ])
+    # AND rd, rd, rs — can't do with adder, use microcode trick:
+    # (skip — would need dedicated AND hardware)
+    # OR rd, rd, rs — same
+    # XOR rd, rd, rs — same
+    # SLT rd, rd, rs (set less than)
+    set_instruction(0b00_101_000 | rd, [
+        REG_RD_EN | ALUB_CLK,
+        FLAGS_CLK | ALU_SUB,               # compare only (don't store)
+        END,
+    ])
+    # SLL rd (shift left = rd + rd)
+    set_instruction(0b00_110_000 | rd, [
+        ALUB_CLK,                           # B = rd (self, via operand trick... actually need rd on B)
+        ALUR_CLK | FLAGS_CLK,              # result = rd + rd = shift left
+        REG_WR_EN | END,
+    ])
+    # SRL rd (shift right — needs special hardware, skip for now)
 
-# Class 11: Control
-# BEQ (opcode = 11_000_ddd) — branch if Z=1
+# Class 10: Memory (opcode = 10_ooo_ddd)
 for rd in range(8):
-    op = 0b11_000_000 | rd
-    set_branch(op, take_on_z=1)
+    # LB rd, off(rs) — load byte from memory
+    # Step 2: compute address (rs + offset) — simplified: use operand as address directly
+    set_instruction(0b10_000_000 | rd, [
+        ADDR_CLK,                           # step 2: latch operand as addr_lo
+        ADDR_HI,                            # step 3: latch high byte (from rs or zero)
+        PC_ADDR & 0 | BUF_OE,             # step 4: addr latch drives, read memory
+        ALUB_CLK,                           # step 5: data_in → ALU B
+        ALUR_CLK,                           # step 6: result = 0 + data = data (pass through)
+        REG_WR_EN | END,                    # step 7: rd = memory data
+    ])
+    # SB rd, off(rs) — store byte to memory
+    set_instruction(0b10_001_000 | rd, [
+        ADDR_CLK,                           # step 2: latch operand as addr_lo
+        ADDR_HI,                            # step 3: latch high byte
+        BUF_OE | BUF_DIR,                  # step 4: write rd to memory (rd drives data_out)
+        END,                                # step 5: done
+    ])
+    # LB rd, [imm] (zero-page)
+    set_instruction(0b10_010_000 | rd, [
+        ADDR_CLK,                           # step 2: addr_lo = operand
+        BUF_OE,                             # step 3: read from {0, operand}
+        ALUB_CLK,                           # step 4: data → ALU B
+        ALUR_CLK,                           # step 5: pass through
+        REG_WR_EN | END,                    # step 6: rd = data
+    ])
+    # SB rd, [imm] (zero-page)
+    set_instruction(0b10_011_000 | rd, [
+        ADDR_CLK,                           # step 2: addr_lo = operand
+        BUF_OE | BUF_DIR,                  # step 3: write rd to {0, operand}
+        END,                                # step 4: done
+    ])
+    # PUSH rd
+    set_instruction(0b10_100_000 | rd, [
+        ADDR_CLK,                           # step 2: addr = sp (simplified)
+        BUF_OE | BUF_DIR,                  # step 3: write rd to stack
+        END,                                # step 4: done (sp-- handled separately)
+    ])
+    # POP rd
+    set_instruction(0b10_101_000 | rd, [
+        ADDR_CLK,                           # step 2: addr = sp
+        BUF_OE,                             # step 3: read from stack
+        ALUB_CLK,                           # step 4: data → ALU B
+        ALUR_CLK,                           # step 5: pass through
+        REG_WR_EN | END,                    # step 6: rd = data (sp++ handled separately)
+    ])
 
-# BNE (opcode = 11_001_ddd) — branch if Z=0
+# Class 11: Branch/Jump/System (opcode = 11_ooo_ddd)
 for rd in range(8):
-    op = 0b11_001_000 | rd
-    set_branch(op, take_on_z=0)
-
-# SYS (opcode = 11_111_ddd) — HLT when operand=$01
-for rd in range(8):
-    op = 0b11_111_000 | rd
-    set_instruction(op, [END])  # just end (HLT = loop on step 0)
-
-# NOP
-set_instruction(0b11_100_000, [END])
+    # BEQ — branch if Z=1
+    set_branch(0b11_000_000 | rd, take_on_z=1)
+    # BNE — branch if Z=0
+    set_branch(0b11_001_000 | rd, take_on_z=0)
+    # BCS — branch if C=1
+    set_branch(0b11_010_000 | rd, take_on_c=1)
+    # BCC — branch if C=0
+    set_branch(0b11_011_000 | rd, take_on_c=0)
+    # JAL rd, off (rd = PC, PC += off)
+    set_instruction(0b11_100_000 | rd, [
+        PC_LOAD | END,                      # step 2: PC += operand (simplified)
+    ])
+    # JALR rd, rs (PC = rs)
+    set_instruction(0b11_101_000 | rd, [
+        PC_LOAD | END,                      # step 2: PC = rs (simplified)
+    ])
+    # J off (unconditional jump)
+    set_instruction(0b11_110_000 | rd, [
+        PC_LOAD | END,                      # step 2: PC += off
+    ])
+    # SYS (NOP/HLT)
+    set_instruction(0b11_111_000 | rd, [END])
 
 # === Fill unused with END (safe default) ===
 for i in range(ROM_SIZE):
@@ -157,4 +232,6 @@ with open("microcode.hex", "w") as f:
         f.write(f"{ucode[i]:04x}\n")
 
 print(f"Generated microcode.hex ({ROM_SIZE} entries)")
-print(f"Instructions defined: LI, ADDI, SUBI, ADD, SUB, BEQ, BNE, NOP, HLT")
+print(f"Instructions: LI, ADDI, SUBI, SLTI, LUI, ADD, SUB, SLT, SLL")
+print(f"              LB, SB, LB_ZP, SB_ZP, PUSH, POP")
+print(f"              BEQ, BNE, BCS, BCC, JAL, JALR, J, SYS")

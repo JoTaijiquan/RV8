@@ -93,6 +93,46 @@ initial begin
     run(30);
     check(uut.regs[0], 8'h00, "r0 always zero");
 
+    // === TEST 6: BEQ taken (Z=1) ===
+    reset_cpu;
+    mem[16'hC000] = LI_R1;          mem[16'hC001] = 8'h05;
+    mem[16'hC002] = 8'b01_010_001;  mem[16'hC003] = 8'h05; // SUBI r1, 5 → r1=0, Z=1
+    mem[16'hC004] = BEQ;            mem[16'hC005] = 8'h02; // branch +2
+    mem[16'hC006] = LI_R1;          mem[16'hC007] = 8'hFF; // skipped
+    mem[16'hC008] = LI_R1;          mem[16'hC009] = 8'h42; // land here
+    mem[16'hC00A] = HLT;            mem[16'hC00B] = 8'h01;
+    run(60);
+    check(uut.regs[1], 8'h42, "BEQ taken");
+
+    // === TEST 7: BNE not taken (Z=1) ===
+    reset_cpu;
+    mem[16'hC000] = LI_R1;          mem[16'hC001] = 8'h05;
+    mem[16'hC002] = 8'b01_010_001;  mem[16'hC003] = 8'h05; // SUBI r1, 5 → Z=1
+    mem[16'hC004] = BNE;            mem[16'hC005] = 8'h02; // not taken (Z=1)
+    mem[16'hC006] = LI_R1;          mem[16'hC007] = 8'h33; // executes
+    mem[16'hC008] = HLT;            mem[16'hC009] = 8'h01;
+    run(60);
+    check(uut.regs[1], 8'h33, "BNE not taken");
+
+    // === TEST 8: Loop (ADDI + SUBI temp + BNE) ===
+    reset_cpu;
+    // Simple: r1 counts up, compare with SUBI into r3, BNE back
+    mem[16'hC000] = LI_R1;          mem[16'hC001] = 8'h00; // r1 = 0
+    // loop:
+    mem[16'hC002] = 8'b01_001_001;  mem[16'hC003] = 8'h01; // ADDI r1, 1
+    mem[16'hC004] = 8'b01_010_001;  mem[16'hC005] = 8'h03; // SUBI r1, 3 → sets Z when r1==3
+    // But SUBI changes r1! Need to not store... use SLTI or separate compare
+    // Actually: just count to 3 with ADDI and check if result is 0 after SUBI
+    // Let's use: LI r1,0; loop: ADDI r1,1; LI r2,r1; SUBI r2,3; BNE loop
+    // Simpler: count down from 3
+    mem[16'hC000] = LI_R1;          mem[16'hC001] = 8'h03; // r1 = 3
+    // loop:
+    mem[16'hC002] = 8'b01_010_001;  mem[16'hC003] = 8'h01; // SUBI r1, 1 (r1--, sets Z when 0)
+    mem[16'hC004] = BNE;            mem[16'hC005] = 8'hFC; // BNE -4 → back to SUBI
+    mem[16'hC006] = HLT;            mem[16'hC007] = 8'h01;
+    run(120);
+    check(uut.regs[1], 8'h00, "Loop count down to 0");
+
     // === RESULTS ===
     $display("");
     $display("========================================");

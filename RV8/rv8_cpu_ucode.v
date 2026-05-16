@@ -98,9 +98,9 @@ always @(posedge clk or negedge rst_n) begin
         if (ctrl[PC_INC])
             pc <= pc + 16'd1;
 
-        // PC load (branch/jump)
+        // PC load (branch/jump — PC += signed operand)
         if (ctrl[PC_LOAD])
-            pc <= {addr_hi, alu_r_reg}; // branch target
+            pc <= pc + {{8{ir_opr[7]}}, ir_opr};
 
         // IR latch
         if (ctrl[IR_CLK])
