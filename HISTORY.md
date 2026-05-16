@@ -39,6 +39,35 @@
 
 ---
 
+## Day 7 (2026-05-16) — Verification & Truth
+
+### RV802 verified:
+- WiringGuide address bus conflict found and fixed (PC→574 with /OE)
+- Understand_by_Module.md created (6 modules for students)
+- Honest count: 25 logic + ROM + RAM = 27 packages
+
+### RV8-G deep verification:
+- ISA vs hardware conflict analysis revealed fundamental issues:
+  - AND/OR/XOR impossible (adder can't do logic ops)
+  - No data path for LI/LB to bypass ALU
+  - No path for a0 → data bus (store operations)
+- Fixing requires 3+ more chips → 29+ total
+- **Pure gates costs MORE chips than microcode for same capability**
+
+### Key insight: the three approaches
+```
+Pure gates (RV8-G):     29+ chips, limited ISA, routing problems
+Microcode (RV802):      25 chips, rich ISA, verified buildable
+Wide ROM (Gigatron):    17 chips, rich ISA, 2× code size, fastest
+```
+
+### Conclusion:
+The "no EEPROM" constraint is self-defeating — it costs more chips than using one.
+The wide-ROM approach (Gigatron style) is the true "no microcode" solution with fewest chips.
+RV802 remains the practical choice (25 chips, verified, RISC-V style).
+
+---
+
 ## Key Milestones
 
 | Date | Milestone |
@@ -47,4 +76,5 @@
 | 2026-05-11 | Original RV8 Verilog 69/69 pass |
 | 2026-05-13 | RV808 designed (44/44 pass) |
 | 2026-05-14 | Programmer board complete |
-| 2026-05-15 | **RV802 + RV8-G: honest, buildable, verified** |
+| 2026-05-15 | RV802 + RV8-G designed, verified |
+| 2026-05-16 | **Deep verification: RV8-G has routing issues, RV802 confirmed best** |

@@ -1,84 +1,66 @@
 # RV8 Project — Session Memory
 
-**Last updated**: 2026-05-15 06:31
+**Last updated**: 2026-05-16 16:55
 
 ---
 
 ## Active Designs
 
-| Variant | Chips | Architecture | Control | MIPS@10MHz | Status |
-|---------|:-----:|-------------|---------|:----------:|:------:|
-| **RV802** | 25+ROM+RAM=27 | Register-register (RISC-V) | Flash microcode | 3.0 | ✅ Verilog + WiringGuide |
-| **RV8-G** | 27+ROM+RAM=29 | Accumulator | Pure gates | 2.5 | ✅ Verilog (34/34) |
+| Variant | Chips | Control | MIPS@10MHz | Status |
+|---------|:-----:|---------|:----------:|:------:|
+| **RV802** | 25 logic (+ROM+RAM=27) | Flash microcode | 2.17 | ✅ Verilog + WiringGuide verified |
+| **RV8-G** | 26 logic (+ROM+RAM=28) | Pure gates | 2.5 | ✅ Verilog 34/34, WiringGuide has issues |
 
-## RV802 (primary build target)
+## Key Realization (Day 7):
 
-- 8 general-purpose registers (r0=zero, r7=sp)
-- 35 instructions, 4 classes (ALU reg, immediate, memory, control)
-- Single internal bus, Flash microcode sequences all transfers
-- SST39SF010A (70ns, PDIP-32) for control
-- Verilog: 19/21 pass (BRA offset + r3 minor fix pending)
-- WiringGuide: verified buildable, no bus conflicts, 10MHz timing OK
+**Three approaches to CPU control, all valid:**
 
-## RV8-G (no-programmer alternative)
+```
+1. Pure gates:     29+ chips, limited ISA — hard to route all signals
+2. Microcode ROM:  25 chips, rich ISA — one Flash chip does all decode (RV802)
+3. Wide ROM:       17 chips, rich ISA — 16-bit instruction = control bits (Gigatron style)
+```
 
-- 5 registers (a0, t0, sp, pl, ph)
-- 30 instructions, opcode bits = control wires
-- Pure 74HC gates, no EEPROM/Flash for control
-- Verilog: 34/34 pass
-- WiringGuide: needs rewrite (subagent found issues in old version)
+The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs chips (gates) or a lookup ROM (microcode). Wide ROM avoids translation entirely.
 
-## Programmer Board
+## RV8-G Issues Found (Day 7):
 
-- ESP32 NodeMCU + 3× TXB0108 level shifters (~$10)
-- PROG mode: flash ROM via 40-pin bus
-- RUN mode: UART terminal bridge
-- Works with both RV802 and RV8-G
+- AND/OR/XOR impossible with adder-only ALU
+- No path for LI/LB data to bypass ALU to registers
+- No path for a0 → data bus (store operations)
+- Fixing these adds 3+ chips → 29+ total
+- Pure gates approach costs MORE chips than microcode approach
+
+## RV802 Status:
+
+- WiringGuide verified: no bus conflicts, 10MHz timing OK
+- Address conflict fixed: PC as 74HC574 (has /OE) + address latches
+- Understand_by_Module.md created (6 modules, student-friendly)
+- Verilog: 19/21 pass (2 minor issues)
+
+## Design Philosophy Conclusion:
+
+> **RV802 (microcode) = fewer chips + more capable + verified buildable**
+> **RV8-G (pure gates) = more chips + less capable + routing problems**
+> **Wide ROM (Gigatron) = fewest chips + fastest + 2× code size**
 
 ## Folder Structure
 
 ```
 /home/jo/kiro/RV8/
-├── RV802/          ← 25-chip RISC-V style (primary)
-│   ├── rv802_cpu.v
-│   ├── tb/tb_rv802_cpu.v
-│   ├── doc/00_design.md
-│   ├── doc/WiringGuide.md (table format)
-│   ├── doc/WiringGuide_json.md (JSON format)
-│   └── README.md
-├── RV8G/           ← 27-chip pure gates
-│   ├── rv8g_cpu.v
-│   ├── tb/tb_rv8g_cpu.v
-│   ├── doc/00_design.md
-│   ├── doc/01_control_trace.md
-│   ├── doc/WiringGuide.md
-│   └── README (in project README)
-├── RV808G/         ← 20-chip Harvard (design study only)
-├── Programmer/     ← ESP32 programmer board
-├── Old_Design/     ← Archived (RV8, RV801, RV808)
-├── .kiro/agents/   ← 5 agents (lead, rtl, docs, hw, sw)
-├── README.md
-├── CHANGELOG.md
-├── HISTORY.md
-├── rv8_memory.md   ← this file
-└── rv8_task.md
+├── RV802/          ← 25-chip RISC-V style, Flash microcode (PRIMARY)
+├── RV8G/           ← 26-chip pure gates (SECONDARY, has issues)
+├── RV808G/         ← 20-chip Harvard (design study)
+├── Programmer/     ← ESP32 board (works with all)
+├── Old_Design/     ← Archived (RV8 original, RV801, RV808)
+├── .kiro/agents/   ← 5 agents
+└── README.md
 ```
 
-## Key Decisions Made
+## Next Steps
 
-1. Accept EEPROM/Flash for control (RV802) — enables simple hardware + rich ISA
-2. Pure gates (RV8-G) costs same chips as Flash version — value is "no programmer"
-3. Single-bus architecture (RV802) eliminates mux chips — microcode handles sequencing
-4. RISC-V style registers eliminate complex addressing modes
-5. Original RV8 (68 instr, accumulator) was unbuildable as documented → archived
-6. SST39SF010A (70ns, PDIP-32) available from Mouser, ships to Thailand
-
-## Agents
-
-| Agent | Model | Role |
-|-------|-------|------|
-| lead | (default) | System architect |
-| rtl | qwen3-coder-next | Verilog RTL |
-| docs | glm-5 | Documentation |
-| hw | glm-5 | Hardware |
-| sw | qwen3-coder-next | Software |
+- [ ] Decide: RV802 (microcode) vs Wide ROM (Gigatron style) vs fix RV8-G
+- [ ] Whichever chosen: complete WiringGuide, assembler, build
+- [ ] Programmer board physical build
+- [ ] BASIC interpreter
+- [ ] Video circuit (Apple II style, shared RAM)
