@@ -2,6 +2,19 @@
 
 ---
 
+## RV802-W (24 logic chips, accumulator, wide ROM, no microcode)
+
+### v0.1 — 2026-05-16
+- Initial design: 24 logic chips, 16-bit instruction word, 1 cycle/instruction
+- Accumulator (a0) always ALU input A — eliminates ALU A mux
+- No microcode, no step counter — instruction bits ARE control signals
+- RISC-V naming: ADD a0,a0,rs / BEQ a0,zero,off / LB a0,off(rs)
+- 8 MIPS @ 8 MHz (or 3.5 MIPS @ 3.5 MHz breadboard)
+- Program ROM: 27C1024 (16-bit wide, DIP-40, 45ns)
+- ~25 instructions, enough for BASIC + games
+
+---
+
 ## RV802 (25 logic chips, RISC-V style, Flash microcode)
 
 ### v0.3 — 2026-05-16

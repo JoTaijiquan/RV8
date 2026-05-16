@@ -61,10 +61,19 @@ Microcode (RV802):      25 chips, rich ISA, verified buildable
 Wide ROM (Gigatron):    17 chips, rich ISA, 2× code size, fastest
 ```
 
+### RV802-W designed (wide instruction, accumulator):
+- 24 logic chips, no microcode, no step counter
+- 16-bit instruction: control byte + operand in one ROM word
+- Accumulator (a0) hardwired to ALU A — eliminates mux problem
+- 1 cycle per ALU instruction = 8 MIPS @ 8 MHz
+- RISC-V naming (ADD a0,a0,rs / BEQ a0,zero,off)
+- Gigatron-proven approach with RISC-V presentation
+
 ### Conclusion:
-The "no EEPROM" constraint is self-defeating — it costs more chips than using one.
-The wide-ROM approach (Gigatron style) is the true "no microcode" solution with fewest chips.
-RV802 remains the practical choice (25 chips, verified, RISC-V style).
+Three viable designs, each with clear trade-offs:
+- **RV802** (27 logic, microcode): RISC-V register-register, 2.17 MIPS, most flexible
+- **RV802-W** (24 logic, wide ROM): RISC-V naming + accumulator, 8 MIPS, fastest
+- **RV8-G** (26 logic, pure gates): no programmable logic, 2.5 MIPS, educational
 
 ---
 
