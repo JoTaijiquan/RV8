@@ -8,9 +8,9 @@ Build real computers from 74HC chips on breadboards. Run BASIC. Play games.
 
 | | RV8-S | RV8-W | RV8 |
 |--|:---:|:---:|:---:|
-| **Logic chips** | **19** | 24 | 27 |
-| **Total packages** | 21 | 26 | 29 |
-| **MIPS @ 10 MHz** | 1.0 | **5.0** | 2.17 |
+| **Logic chips** | **20** | 25 | 27 |
+| **Total packages** | 22 | 27 | 29 |
+| **MIPS** | 1.0 @10MHz | 2.5 @5MHz | 2.17 @10MHz |
 | **ALU** | 1-bit serial | 8-bit parallel | 8-bit parallel |
 | **Control** | Flash microcode | No microcode | Flash microcode |
 | **ISA** | RISC-V reg-reg | RISC-V accumulator | RISC-V reg-reg |
@@ -119,8 +119,8 @@ All three CPU variants output identical bus signals. Same Programmer + Trainer b
 ```
 RV8/
 ├── RV8/            ← 27 chips, RISC-V reg-reg, Flash microcode
-├── RV8W/           ← 24 chips, RISC-V accumulator, no microcode, 5 MIPS
-├── RV8S/           ← 19 chips, serial ALU, same ISA as RV8, 1 MIPS
+├── RV8W/           ← 25 chips, RISC-V accumulator, no microcode, 2.5 MIPS
+├── RV8S/           ← 20 chips, serial ALU, same ISA as RV8, 1 MIPS
 ├── Programmer/     ← ESP32 board (flash ROM + terminal)
 ├── Old_Design/     ← Archived (RV8-G, RV8 original, RV801, RV808)
 ├── Reference/      ← Gigatron, SAP-1, Nand2Tetris
