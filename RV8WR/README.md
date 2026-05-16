@@ -158,3 +158,27 @@ This needs a mux to select: AC.D ← adder output OR XOR output. That's the same
 - All jumps and calls (JAL, RET)
 - Simple games (no bit manipulation)
 - BASIC (if interpreter avoids AND/OR — use SUB+branch instead)
+
+---
+
+## Chip List (19 logic)
+
+| U# | Chip | Function |
+|:--:|------|----------|
+| U1 | 74HC574 | AC (accumulator, hardwired to ALU A) |
+| U2 | 74HC574 | IR_HIGH (control byte, drives hardware) |
+| U3-U4 | 74HC283 ×2 | ALU adder (8-bit) |
+| U5-U6 | 74HC86 ×2 | XOR (SUB invert + XOR instruction) |
+| U7 | 74HC157 | Address mux A[7:4] |
+| U8 | 74HC574 | IR_LOW (operand byte) |
+| U9 | 74HC541 | AC → IBUS buffer (for store/move) |
+| U10 | 74HC245 | Bus buffer (IBUS ↔ RAM) |
+| U11-U12 | 74HC157 ×2 | AC D-input mux (adder vs IBUS vs XOR) |
+| U13 | 74HC157 | Address mux A[3:0] (PC vs operand) |
+| U14 | 74HC74 | Flags (Z) + state toggle |
+| U15-U18 | 74HC161 ×4 | PC (16-bit counter) |
+| U19 | 74HC541 | PC → IBUS buffer (for JAL) |
+| — | SST39SF010A | Program ROM (128KB, 70ns) |
+| — | 62256 | RAM (32KB, includes registers $00-$07) |
+
+**No microcode. No Flash lookup. Control byte bits + 3 derived gates = all signals.**
