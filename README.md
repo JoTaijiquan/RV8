@@ -166,7 +166,8 @@ python3 Programmer/tools/rv8term.py /dev/ttyUSB0
 | Design doc | ✅ | ✅ | ✅ |
 | ISA defined | ✅ | ✅ | ✅ (=RV8) |
 | Verilog | ✅ (19/21) | ⬜ | ⬜ |
-| WiringGuide | ✅ (verified) | ⬜ | ⬜ |
+| WiringGuide | ✅ (verified) | ⬜ | ✅ (20 chips, issues noted) |
 | Instruction trace | ✅ | ⬜ | ⬜ |
 | Assembler | ⬜ | ⬜ | ⬜ |
 | Programmer board | ✅ | ✅ | ✅ |
+| Bus compatible | ✅ | ✅ | ✅ |

@@ -2,6 +2,17 @@
 
 ---
 
+## RV8-S (20 logic chips, serial ALU, Flash microcode)
+
+### v0.1 — 2026-05-16
+- Initial design: 20 logic chips, 1-bit serial ALU, 74HC595 shift registers
+- Same RISC-V ISA as RV8 (just slower: 1.0 MIPS @ 10 MHz)
+- WiringGuide created (issues found: carry OR, parallel load, register mux)
+- Honest count: 20 logic + ROM + RAM = 22 packages
+- RV8-Bus compatible (same 40-pin, same Programmer board)
+
+---
+
 ## RV8-W (24 logic chips, accumulator, wide ROM, no microcode)
 
 ### v0.1 — 2026-05-16

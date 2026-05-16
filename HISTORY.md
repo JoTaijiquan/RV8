@@ -69,11 +69,18 @@ Wide ROM (Gigatron):    17 chips, rich ISA, 2× code size, fastest
 - RISC-V naming (ADD a0,a0,rs / BEQ a0,zero,off)
 - Gigatron-proven approach with RISC-V presentation
 
+### RV8-S designed (serial bus, fewest chips):
+- 20 logic chips, 1-bit serial ALU (74HC595 shift registers)
+- Same RISC-V ISA as RV8 — binary compatible, just slower
+- 1.0 MIPS @ 10 MHz (10 clocks per instruction)
+- WiringGuide verified: carry OR issue (+1 74HC32), parallel load via microcode
+- Fewest chips of all designs that run full RISC-V ISA
+
 ### Conclusion:
 Three viable designs, each with clear trade-offs:
 - **RV8** (27 logic, microcode): RISC-V register-register, 2.17 MIPS, most flexible
-- **RV8-W** (24 logic, wide ROM): RISC-V naming + accumulator, 8 MIPS, fastest
-- **RV8-G** (26 logic, pure gates): no programmable logic, 2.5 MIPS, educational
+- **RV8-W** (24 logic, wide ROM): RISC-V naming + accumulator, 5 MIPS, fastest
+- **RV8-S** (20 logic, serial): RISC-V reg-reg (same as RV8), 1 MIPS, fewest chips
 
 ---
 
