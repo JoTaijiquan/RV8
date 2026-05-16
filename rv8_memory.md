@@ -1,76 +1,52 @@
 # RV8 Project — Session Memory
 
-**Last updated**: 2026-05-16 16:55
+**Last updated**: 2026-05-16 21:37
 
 ---
 
-## Active Designs
+## Final Family (4 active variants)
 
-| Variant | Chips | Control | MIPS@10MHz | Status |
-|---------|:-----:|---------|:----------:|:------:|
-| **RV8** | 25 logic (+ROM+RAM=27) | Flash microcode | 2.17 | ✅ Verilog + WiringGuide verified |
-| **RV8-G** | 26 logic (+ROM+RAM=28) | Pure gates | 2.5 | ✅ Verilog 34/34, WiringGuide has issues |
+| | RV8 | RV8-R | RV8-W | RV8-WR |
+|--|:---:|:---:|:---:|:---:|
+| Logic chips | 27 | **17** | 27 | **19** |
+| Total | 29 | 20 | 29 | 21 |
+| MIPS | 1.25 | 1.0 | **1.7** | **1.7** |
+| ISA | Full (35) | Full (35) | Full (35) | Reduced (20) |
+| Microcode | Yes | Yes | **No** | **No** |
+| Binary compat | — | ✅=RV8 | ✅=RV8 | ❌ own |
+| Registers | Hardware | RAM | RAM | RAM |
 
-## Key Realization (Day 7):
-
-**Three approaches to CPU control, all valid:**
-
-```
-1. Pure gates:     29+ chips, limited ISA — hard to route all signals
-2. Microcode ROM:  25 chips, rich ISA — one Flash chip does all decode (RV8)
-3. Wide ROM:       17 chips, rich ISA — 16-bit instruction = control bits (Gigatron style)
-```
-
-The fundamental problem: 8-bit opcode needs ~16 control wires. Translation costs chips (gates) or a lookup ROM (microcode). Wide ROM avoids translation entirely.
-
-## RV8-G Issues Found (Day 7):
-
-- AND/OR/XOR impossible with adder-only ALU
-- No path for LI/LB data to bypass ALU to registers
-- No path for a0 → data bus (store operations)
-- Fixing these adds 3+ chips → 29+ total
-- Pure gates approach costs MORE chips than microcode approach
-
-## RV8 Status:
-
-- WiringGuide verified: no bus conflicts, 10MHz timing OK
-- Address conflict fixed: PC as 74HC574 (has /OE) + address latches
-- Understand_by_Module.md created (6 modules, student-friendly)
-- Verilog: 19/21 pass (2 minor issues)
-
-## Design Philosophy Conclusion:
-
-> **RV8 (microcode) = fewer chips + more capable + verified buildable**
-> **RV8-G (pure gates) = more chips + less capable + routing problems**
-> **Wide ROM (Gigatron) = fewest chips + fastest + 2× code size**
+## Key Insight:
+- Full ISA always costs ~27 chips (gates or microcode — same)
+- RAM registers save ~10 chips (RV8-R = 17 chips!)
+- Reduced ISA (drop AND/OR/XOR) saves more (RV8-WR = 19 chips, no microcode)
+- Serial ALU doesn't save enough (archived RV8-S)
 
 ## Folder Structure
 
 ```
 /home/jo/kiro/RV8/
-├── RV8/          ← 25-chip RISC-V style, Flash microcode (PRIMARY)
-├── RV8G/           ← 26-chip pure gates (SECONDARY, has issues)
-├── RV808G/         ← 20-chip Harvard (design study)
-├── Programmer/     ← ESP32 board (works with all)
-├── Old_Design/     ← Archived (RV8 original, RV801, RV808)
-├── .kiro/agents/   ← 5 agents
+├── RV8/        27 chips, proven, microcode, Verilog 8/8 pass
+├── RV8R/       17 chips, RAM regs, microcode, fewest+full ISA
+├── RV8W/       27 chips, no microcode, full ISA, fastest
+├── RV8WR/      19 chips, no microcode, reduced ISA, cheapest games
+├── Programmer/ ESP32 + TXB0108 (works with all)
+├── Old_Design/ Archived (RV8-G, RV8-S, RV808, RV801, original)
+├── Reference/  Gigatron, SAP-1, Nand2Tetris
 └── README.md
 ```
 
-## Next Steps
+## What's Working:
+- RV8 microcode-driven Verilog: 8/8 tests pass
+- RV8 microcode generator (Python): generates Flash .bin
+- Programmer board: designed (ESP32 + TXB0108 + firmware + tools)
+- All WiringGuides: bus-centric format (RV8-Bus external + IBUS internal)
+- Understand by Module: English + Thai (RV8, RV8-W)
 
-- [ ] Decide: RV8 (microcode) vs Wide ROM (Gigatron style) vs fix RV8-G
-- [ ] Whichever chosen: complete WiringGuide, assembler, build
-- [ ] Programmer board physical build
-- [ ] BASIC interpreter
-- [ ] Video circuit (Apple II style, shared RAM)
-
-## Reference: Gigatron TTL Computer (proven design)
-
-- 34 TTL chips, NO microprocessor, runs games + VGA video + sound
-- Harvard architecture, 16-bit wide ROM (instruction = control bits)
-- 6 chips decode 8 instruction bits → 19 control signals (no EEPROM!)
-  - 74HC138 ×2 + 74HC153 + 74HC139 + 74HC240 + 74HC32
-- CPU bit-bangs VGA directly (software replaces video chip)
-- vCPU: interpreted virtual CPU in software (34 instructions, runs from RAM)
-- This is the "wide ROM" approach that solves RV8-G's decode problem
+## Next Steps:
+1. Decide which variant to build first
+2. Complete instruction trace for chosen variant
+3. Build Programmer board physically
+4. Write assembler
+5. Build CPU on breadboard
+6. BASIC interpreter
