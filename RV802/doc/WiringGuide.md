@@ -61,7 +61,12 @@ Bus:{
     ALU_SUB  : SUB mode → U14+U15 XOR B input (inverts ALUB),
     FLAGS_CLK: Latch flags → U24.CLK,
     /RD      : Memory read → ROM./OE + RAM./OE,
-    /WR      : Memory write → RAM./WE
+    /WR      : Memory write → RAM./WE,
+    /IRQ     : Interrupt request (active low level) → Flash A13 (pin 1),
+    //         When LOW at step 0: microcode enters interrupt sequence
+    //         Sequence: push PC → load vector ($0008) → jump to handler
+    //         Software clears IRQ source before RET
+    /NMI     : (reserved on bus pin 29 — needs edge-detect FF for future)
 },
 
 Part:{
@@ -273,16 +278,20 @@ Part:{
     // ═══════════════════════════════════════════
 
     U23:{type:SST39SF010A, function:"Microcode control ROM",
-        // Address = {step[2:0], opcode[7:0], flag_z, flag_c} = 13 bits
+        // Address = {/IRQ, step[2:0], opcode[7:0], flag_z, flag_c} = 14 bits
         // Data = 8 control signal outputs
         10:OP0, 9:OP1, 8:OP2, 7:OP3, 6:OP4, 5:OP5, 4:OP6, 3:OP7,
         25:STEP0, 24:STEP1, 21:STEP2,
         23:FLAG_Z, 26:FLAG_C,
-        1:GND, 2:GND, 14:GND, 20:GND, 22:GND, 30:GND,
+        1:/IRQ, 2:GND, 14:GND, 20:GND, 22:GND, 30:GND,
         27:VCC, 28:VCC, 31:VCC, 32:VCC,
         11:CTRL0, 12:CTRL1, 13:CTRL2, 15:CTRL3,
         16:CTRL4, 17:CTRL5, 18:CTRL6, 19:CTRL7},
-    // D[7:0] outputs directly control everything per micro-step
+    // A13(pin 1) = /IRQ from bus pin 30 (active low)
+    // When /IRQ=LOW: microcode enters interrupt sequence at step 0
+    // When /IRQ=HIGH: normal execution
+    // Flash table: 16K entries (14 address bits) × 8 data bits = 16KB used of 128KB
+    // Interrupt sequence (in microcode): push PC, load vector, jump to handler
 
     // ═══════════════════════════════════════════
     // FLAGS — 74HC74 (U24)
