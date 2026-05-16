@@ -6,15 +6,15 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 
 ## The Family
 
-| | **RV8-R** | **RV8-WR** | **RV8** | **RV8-W** |
+| | **RV8** | **RV8-R** | **RV8-W** | **RV8-WR** |
 |--|:---:|:---:|:---:|:---:|
-| **Logic chips** | **17** | **19** | 27 | 27 |
-| **Total** | 20 | 21 | 29 | 29 |
-| **MIPS @10MHz** | 1.0 | **1.7** | 1.25 | **1.7** |
-| **ISA** | Full (35) | Reduced (20) | Full (35) | Full (35) |
-| **Microcode** | Yes | **No** | Yes | **No** |
-| **AND/OR/XOR** | ✅ | ❌ | ✅ | ✅ |
-| **Binary compatible** | ✅=RV8 | ❌ | — | ✅=RV8 |
+| **Logic chips** | 27 | **17** | 27 | **19** |
+| **Total** | 29 | 20 | 29 | 21 |
+| **MIPS @10MHz** | 1.25 | 1.0 | **1.7** | **1.7** |
+| **ISA** | Full (35) | Full (35) | Full (35) | Reduced (20) |
+| **Microcode** | Yes | Yes | **No** | **No** |
+| **AND/OR/XOR** | ✅ | ✅ | ✅ | ❌ |
+| **Binary compatible** | — | ✅=RV8 | ✅=RV8 | ❌ |
 | **Games** | ✅ | ✅ | ✅ | ✅ |
 
 ---
@@ -23,10 +23,10 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 
 | Priority | Build |
 |----------|-------|
-| **Fewest chips + full ISA** | **RV8-R** (17 chips) |
-| **No microcode + plays games** | **RV8-WR** (19 chips) |
-| **Full ISA + no microcode** | **RV8-W** (27 chips) |
 | **Learn microcode + proven** | **RV8** (27 chips) |
+| **Fewest chips + full ISA** | **RV8-R** (17 chips) |
+| **Full ISA + no microcode** | **RV8-W** (27 chips) |
+| **No microcode + cheapest games** | **RV8-WR** (19 chips) |
 
 ---
 
@@ -34,10 +34,10 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 
 | Variant | Pro | Con |
 |---------|-----|-----|
-| **RV8-R** | Fewest chips (17), full ISA | Needs 2× Flash programmer |
-| **RV8-WR** | No microcode, cheap (19), games | Own ISA, no logic ops |
 | **RV8** | Proven, working Verilog (8/8) | Most chips (27), needs microcode |
+| **RV8-R** | Fewest chips (17), full ISA | Needs 2× Flash programmer |
 | **RV8-W** | Full ISA, no microcode, fastest | Same chips as RV8, complex wiring |
+| **RV8-WR** | No microcode, cheap (19), games | Own ISA, no logic ops |
 
 ---
 
