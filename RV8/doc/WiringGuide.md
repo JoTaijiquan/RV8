@@ -1,422 +1,238 @@
+{
 // ═══════════════════════════════════════════════════════════════
-// RV8 CPU — WiringGuide (JSON format)
+// RV8 CPU — WiringGuide (Bus-Centric)
 // 27 logic chips + ROM + RAM = 29 packages
-// Single 8-bit bus, Flash microcode, RISC-V style
-// ═══════════════════════════════════════════════════════════════
 //
-// ARCHITECTURE:
-//   One internal bus (IBUS). Microcode controls who drives/latches.
-//   PC is 74HC574 (has /OE) — can disconnect from address bus.
-//   Address latches hold address during data access.
-//   ALU result goes directly to register D inputs (not through IBUS).
-//   Step counter (U26, 74HC161) feeds Flash address to sequence micro-steps.
-//   Two microcode ROMs (U23+U27) provide 16 control output bits.
+// TWO BUSES:
+//   RV8-Bus (external, 40-pin): A[15:0] + D[7:0] → ROM, RAM, peripherals
+//   IBUS (internal, 8-bit): connects all CPU chips together
 //
-// SPEED: ~1.25 MIPS @ 10 MHz (8 steps max per instruction)
+// U22 (74HC245) bridges IBUS ↔ RV8-Bus D[7:0]
 // ═══════════════════════════════════════════════════════════════
 
 Project: RV8,
 
-Bus:{
-    // === POWER ===
-    VCC  : +5V,
-    GND  : GND,
+// ═══════════════════════════════════════════════════════════════
+// RV8-Bus (EXTERNAL) — 40-pin connector to ROM, RAM, peripherals
+// ═══════════════════════════════════════════════════════════════
 
-    // === CLOCK + RESET ===
-    CLK  : 10 MHz (PCB) / 3.5 MHz (breadboard) — from crystal oscillator,
-    /RST : Reset — 10K pull-up + 100nF debounce + pushbutton to GND,
+RV8_Bus:{
+    // --- Address (directly to ROM + RAM address pins) ---
+    A0:  U16.Q0 or U18.Q0,  // PC low or addr latch low (selected by /OE)
+    A1:  U16.Q1 or U18.Q1,
+    A2:  U16.Q2 or U18.Q2,
+    A3:  U16.Q3 or U18.Q3,
+    A4:  U16.Q4 or U18.Q4,
+    A5:  U16.Q5 or U18.Q5,
+    A6:  U16.Q6 or U18.Q6,
+    A7:  U16.Q7 or U18.Q7,
+    A8:  U17.Q0 or U19.Q0,  // PC high or addr latch high
+    A9:  U17.Q1 or U19.Q1,
+    A10: U17.Q2 or U19.Q2,
+    A11: U17.Q3 or U19.Q3,
+    A12: U17.Q4 or U19.Q4,
+    A13: U17.Q5 or U19.Q5,
+    A14: U17.Q6 or U19.Q6,
+    A15: U17.Q7 or U19.Q7,
+    // PC (U16+U17) drives when PC_ADDR=1 (/OE=LOW)
+    // Addr latches (U18+U19) drive when PC_ADDR=0 (/OE=LOW)
+    // Never both at same time!
 
-    // === INTERNAL BUS (8-bit, tri-state, one driver at a time) ===
-    IBUS[7:0] : Shared by all registers — only ONE /OE active at a time,
+    // --- Data (bridged to IBUS via U22) ---
+    D0: U22.B1,  D1: U22.B2,  D2: U22.B3,  D3: U22.B4,
+    D4: U22.B5,  D5: U22.B6,  D6: U22.B7,  D7: U22.B8,
 
-    // === ADDRESS BUS (directly to ROM + RAM address pins) ===
-    ADDR[15:0] : Driven by PC (fetch) OR address latches (data access),
+    // --- Control ---
+    "/RD": from_microcode (U23.D0),  // → ROM./OE + RAM./OE
+    "/WR": from_microcode (U23.D1),  // → RAM./WE
+    CLK:  crystal_oscillator,
+    "/RST": reset_circuit,
+    "/NMI": pull-up_10K (reserved),
+    "/IRQ": pull-up_10K → U23.A13 (Flash address bit),
+    HALT: (reserved),
+    SYNC: from_microcode (step=0 detect),
 
-    // === EXTERNAL DATA (ROM/RAM data pins, via U22 buffer) ===
-    DEXT[7:0] : ROM/RAM D[7:0] ↔ U22 (74HC245) ↔ IBUS,
-
-    // === ALU RESULT BUS (direct to register D inputs, NOT on IBUS) ===
-    ALU_R[7:0] : From U25 (result latch) Q → all register D inputs,
-
-    // === ALU B INPUT (from operand OR B-latch, selected by /OE) ===
-    ALUB[7:0] : Shared by U10 and U11 (only one /OE active),
-
-    // === STEP COUNTER (from U26 to Flash address) ===
-    STEP[3:0] : U26.Q0-Q3 → U23.A8-A11 and U27.A8-A11,
-
-    // === CONTROL SIGNALS (from microcode Flash U23, 8 bits) ===
-    BUF_OE    : U23.D0 — Enable external bus buffer → U22./OE,
-    BUF_DIR   : U23.D1 — Buffer direction → U22.DIR (0=ext→IBUS 1=IBUS→ext),
-    DATA_MODE : U23.D2 — 0=fetch(PC drives addr) 1=data(latches drive addr),
-    ALU_SUB   : U23.D3 — SUB mode → U14+U15 XOR B input,
-    IR_CLK    : U23.D4 — Latch opcode from IBUS → U9.CLK,
-    OPR_CLK   : U23.D5 — Latch operand from IBUS → U10.CLK,
-    ALUB_CLK  : U23.D6 — Latch ALU B from IBUS → U11.CLK,
-    STEP_RST  : U23.D7 — Reset step counter → U26./CLR (active low),
-
-    // === CONTROL SIGNALS (from microcode Flash U27, 8 bits) ===
-    REG_RD[2:0] : U27.D0-D2 — Which register drives IBUS → U20 (138) A/B/C,
-    REG_WR[2:0] : U27.D3-D5 — Which register latches ALU_R → U21 A/B/C,
-    PC_INC    : U27.D6 — Increment PC (pulse PC_LO_CLK + carry logic),
-    PC_LOAD   : U27.D7 — Load PC from ALU_R (branch/jump),
-
-    // === DERIVED CONTROL (active during specific micro-steps) ===
-    ALUR_CLK  : Latch ALU result → U25.CLK (derived from step decode or Flash),
-    ADDR_LO_CLK : Latch address low from IBUS → U18.CLK,
-    ADDR_HI_CLK : Latch address high from IBUS → U19.CLK,
-    FLAGS_CLK : Latch flags → U24.CLK,
-    REG_WR_EN : Enable register write → U21 (138) G1,
-    /RD       : Memory read → ROM./OE + RAM./OE,
-    /WR       : Memory write → RAM./WE,
-    /IRQ      : Interrupt request (active low) → Flash A12,
-    /NMI      : (reserved on bus pin 29)
+    // --- 40-pin pinout ---
+    pin_1:A0, pin_2:A1, pin_3:A2, pin_4:A3,
+    pin_5:A4, pin_6:A5, pin_7:A6, pin_8:A7,
+    pin_9:A8, pin_10:A9, pin_11:A10, pin_12:A11,
+    pin_13:A12, pin_14:A13, pin_15:A14, pin_16:A15,
+    pin_17:D0, pin_18:D1, pin_19:D2, pin_20:D3,
+    pin_21:D4, pin_22:D5, pin_23:D6, pin_24:D7,
+    pin_25:"/RD", pin_26:"/WR", pin_27:CLK, pin_28:"/RST",
+    pin_29:"/NMI", pin_30:"/IRQ", pin_31:HALT, pin_32:SYNC,
+    pin_33:nc, pin_34:nc, pin_35:nc, pin_36:nc,
+    pin_37:nc, pin_38:nc, pin_39:VCC, pin_40:GND
 },
 
+// ═══════════════════════════════════════════════════════════════
+// IBUS (INTERNAL) — 8-bit shared bus inside the CPU
+// Only ONE chip drives IBUS at a time (via /OE control)
+// ═══════════════════════════════════════════════════════════════
+
+IBUS:{
+    width: 8,
+    drivers: [
+        "U1-U8 (registers, selected by U20 /OE decode)",
+        "U10 (IR operand, when OPR_OE=LOW)",
+        "U22 (bus buffer, when reading from RV8-Bus → IBUS)",
+        "U25 (ALU result latch, when ALUR_OE=LOW)"
+    ],
+    consumers: [
+        "U9 (IR opcode, latches on IR_CLK)",
+        "U10 (IR operand, latches on OPR_CLK)",
+        "U11 (ALU B latch, latches on ALUB_CLK)",
+        "U18 (addr latch low, latches on ADDR_LO_CLK)",
+        "U19 (addr latch high, latches on ADDR_HI_CLK)",
+        "U22 (bus buffer, when writing IBUS → RV8-Bus)"
+    ],
+    rule: "Microcode ensures only ONE driver active per clock cycle"
+},
+
+// ═══════════════════════════════════════════════════════════════
+// CHIPS ON IBUS (internal bus)
+// ═══════════════════════════════════════════════════════════════
+
 Part:{
-    // ═══════════════════════════════════════════
-    // REGISTERS r0-r7 — 74HC574 ×8 (U1-U8)
-    // All identical wiring pattern:
-    //   /OE → from U20 (read decoder, one active at a time)
-    //   CLK → from U21 (write decoder, fires on write)
-    //   D[7:0] ← ALU_R[7:0] (result bus, always connected)
-    //   Q[7:0] → IBUS[7:0] (only when /OE=LOW)
-    // ═══════════════════════════════════════════
 
-    U1:{type:74HC574, function:"r0 (always zero — CLK tied to GND)",
-        1:U20.15, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:GND, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- REGISTERS (on IBUS) ---
+    U1:{type:74HC574, bus:IBUS, function:"r0 (zero, never writes)",
+        1:U20.Y0, 11:GND, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U2:{type:74HC574, bus:IBUS, function:"r1 (a0)",
+        1:U20.Y1, 11:U21.Y1, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U3:{type:74HC574, bus:IBUS, function:"r2 (a1)",
+        1:U20.Y2, 11:U21.Y2, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U4:{type:74HC574, bus:IBUS, function:"r3 (t0)",
+        1:U20.Y3, 11:U21.Y3, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U5:{type:74HC574, bus:IBUS, function:"r4 (t1)",
+        1:U20.Y4, 11:U21.Y4, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U6:{type:74HC574, bus:IBUS, function:"r5 (s0)",
+        1:U20.Y5, 11:U21.Y5, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U7:{type:74HC574, bus:IBUS, function:"r6 (s1)",
+        1:U20.Y6, 11:U21.Y6, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    U8:{type:74HC574, bus:IBUS, function:"r7 (sp/ra)",
+        1:U20.Y7, 11:U21.Y7, "2-9":ALU_R, "12-19":IBUS, 10:GND, 20:VCC},
+    // /OE(1) from U20 (read decode) — selects who drives IBUS
+    // CLK(11) from U21 (write decode) — selects who latches from ALU_R
+    // D(2-9) from ALU_R bus (result latch output)
+    // Q(12-19) to IBUS (when /OE=LOW)
 
-    U2:{type:74HC574, function:"r1 (return value / accumulator)",
-        1:U20.14, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.15, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- IR (on IBUS, latches from IBUS) ---
+    U9:{type:74HC574, bus:IBUS, function:"IR opcode",
+        1:GND, 11:IR_CLK, "2-9":IBUS, "12-19":"→Flash_addr+decode", 10:GND, 20:VCC},
+    U10:{type:74HC574, bus:IBUS, function:"IR operand (also drives IBUS for immediate)",
+        1:OPR_OE, 11:OPR_CLK, "2-9":IBUS, "12-19":IBUS, 10:GND, 20:VCC},
 
-    U3:{type:74HC574, function:"r2 (argument 1)",
-        1:U20.13, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.14, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- ALU B LATCH (on IBUS, latches from IBUS) ---
+    U11:{type:74HC574, bus:IBUS, function:"ALU B latch",
+        1:VCC, 11:ALUB_CLK, "2-9":IBUS, "12-19":"→XOR(U14+U15)→Adder_B", 10:GND, 20:VCC},
+    // /OE=VCC (never drives IBUS), Q→ALU B input via XOR
 
-    U4:{type:74HC574, function:"r3 (temp 0)",
-        1:U20.12, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.13, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- ALU (internal, not on IBUS directly) ---
+    U12:{type:74HC283, bus:internal, function:"ALU adder low nibble",
+        "A1-A4":"IBUS[3:0] (rd value)", "B1-B4":"XOR_out[3:0]",
+        C0:ALU_SUB, "S1-S4":"→U25.D[3:0]", C4:"→U13.C0"},
+    U13:{type:74HC283, bus:internal, function:"ALU adder high nibble",
+        "A1-A4":"IBUS[7:4] (rd value)", "B1-B4":"XOR_out[7:4]",
+        C0:"U12.C4", "S1-S4":"→U25.D[7:4]", C4:"carry_out→U24.D2"},
+    U14:{type:74HC86, bus:internal, function:"XOR low (SUB invert bits 0-3)",
+        "inputs":"U11.Q[3:0] XOR ALU_SUB", "outputs":"→U12.B[3:0]"},
+    U15:{type:74HC86, bus:internal, function:"XOR high (SUB invert bits 4-7)",
+        "inputs":"U11.Q[7:4] XOR ALU_SUB", "outputs":"→U13.B[7:4]"},
 
-    U5:{type:74HC574, function:"r4 (temp 1)",
-        1:U20.11, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.12, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- ALU RESULT LATCH (drives IBUS when needed, always drives ALU_R) ---
+    U25:{type:74HC574, bus:IBUS, function:"ALU result latch → ALU_R bus",
+        1:GND, 11:ALUR_CLK, "2-9":"adder_S[7:0]", "12-19":"ALU_R[7:0]→all_reg_D", 10:GND, 20:VCC},
+    // /OE=GND (always drives ALU_R bus to register D inputs)
 
-    U6:{type:74HC574, function:"r5 (saved 0)",
-        1:U20.10, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.11, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- CHIPS ON RV8-Bus (address bus) ---
 
-    U7:{type:74HC574, function:"r6 (saved 1 / page register)",
-        1:U20.9, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.10, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- PC (drives RV8-Bus A[15:0] during fetch) ---
+    U16:{type:74HC574, bus:RV8_Bus_addr, function:"PC low (A[7:0] during fetch)",
+        1:PC_ADDR_n, 11:PC_LO_CLK, "2-9":ALU_R, "12-19":"A[7:0]", 10:GND, 20:VCC},
+    U17:{type:74HC574, bus:RV8_Bus_addr, function:"PC high (A[15:8] during fetch)",
+        1:PC_ADDR_n, 11:PC_HI_CLK, "2-9":ALU_R, "12-19":"A[15:8]", 10:GND, 20:VCC},
+    // /OE=PC_ADDR_n: LOW during fetch (PC drives address), HIGH during data access
+    // D from ALU_R (PC+1 computed by ALU, or branch target)
 
-    U8:{type:74HC574, function:"r7 (stack pointer)",
-        1:U20.7, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:U21.9, 12:IBUS0, 13:IBUS1, 14:IBUS2, 15:IBUS3,
-        16:IBUS4, 17:IBUS5, 18:IBUS6, 19:IBUS7, 20:VCC},
+    // --- ADDRESS LATCHES (drive RV8-Bus A[15:0] during data access) ---
+    U18:{type:74HC574, bus:RV8_Bus_addr, function:"Addr latch low (A[7:0] during data)",
+        1:PC_ADDR, 11:ADDR_LO_CLK, "2-9":IBUS, "12-19":"A[7:0]", 10:GND, 20:VCC},
+    U19:{type:74HC574, bus:RV8_Bus_addr, function:"Addr latch high (A[15:8] during data)",
+        1:PC_ADDR, 11:ADDR_HI_CLK, "2-9":IBUS, "12-19":"A[15:8]", 10:GND, 20:VCC},
+    // /OE=PC_ADDR: LOW during data access (latches drive), HIGH during fetch
+    // D from IBUS (register value for memory address)
 
-    // ═══════════════════════════════════════════
-    // IR + ALU LATCHES — 74HC574 ×3 (U9-U11)
-    // ═══════════════════════════════════════════
+    // --- BUS BRIDGE (connects IBUS ↔ RV8-Bus D[7:0]) ---
+    U22:{type:74HC245, bus:both, function:"Bridge: IBUS ↔ RV8-Bus data",
+        1:BUF_DIR, 19:BUF_OE_n,
+        "2-9":"IBUS[7:0] (A side)", "11-18":"D[7:0] (B side, RV8-Bus)",
+        10:GND, 20:VCC},
+    // DIR(1): 0=B→A (read: RV8-Bus→IBUS), 1=A→B (write: IBUS→RV8-Bus)
+    // /OE(19): LOW=enabled (only during memory access steps)
 
-    U9:{type:74HC574, function:"IR opcode (always outputs to decode)",
-        1:GND, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:IR_CLK, 12:OP0, 13:OP1, 14:OP2, 15:OP3,
-        16:OP4, 17:OP5, 18:OP6, 19:OP7, 20:VCC},
-    // /OE(1)=GND (always on)  CLK(11)=IR_CLK  D←IBUS  Q→Flash addr A0-A7
+    // --- CONTROL (not on either bus — generates control signals) ---
 
-    U10:{type:74HC574, function:"IR operand (also drives ALUB for immediate ops)",
-        1:OPR_OE, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:OPR_CLK, 12:ALUB0, 13:ALUB1, 14:ALUB2, 15:ALUB3,
-        16:ALUB4, 17:ALUB5, 18:ALUB6, 19:ALUB7, 20:VCC},
+    U20:{type:74HC138, bus:control, function:"Register READ select (who drives IBUS)",
+        "A,B,C":"from operand rs[2:0] or microcode", G1:REG_RD_EN,
+        "Y0-Y7":"→U1-U8 /OE pins"},
 
-    U11:{type:74HC574, function:"ALU B latch (holds rs value for reg-reg ops)",
-        1:ALUB_OE, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:ALUB_CLK, 12:ALUB0, 13:ALUB1, 14:ALUB2, 15:ALUB3,
-        16:ALUB4, 17:ALUB5, 18:ALUB6, 19:ALUB7, 20:VCC},
+    U21:{type:74HC138, bus:control, function:"Register WRITE select (who latches ALU_R)",
+        "A,B,C":"from opcode rd[2:0]", G1:REG_WR_EN,
+        "Y0-Y7":"→U1-U8 CLK pins"},
 
-    // ═══════════════════════════════════════════
-    // ALU — 74HC283 ×2 + 74HC86 ×2 (U12-U15)
-    // A input: from IBUS (rd currently driving bus)
-    // B input: from ALUB (via XOR for SUB invert)
-    // Result: → U25 (result latch) → ALU_R bus → register D inputs
-    // ═══════════════════════════════════════════
+    U23:{type:SST39SF010A, bus:control, function:"Microcode Flash #1 (low control byte)",
+        "addr":"step[2:0]+opcode[7:0]+flags[1:0]+IRQ = 14 bits",
+        "data":"D[7:0] = BUF_OE,BUF_DIR,PC_ADDR,ADDR_CLK,PC_INC,IR_CLK,OPR_CLK,STEP_RST"},
 
-    U12:{type:74HC283, function:"ALU adder low nibble (bits 3:0)",
-        1:ALU_S1, 2:XOR1, 3:IBUS1, 4:ALU_S0,
-        5:IBUS0, 6:XOR0, 7:ALU_SUB, 8:GND,
-        9:U13.7, 10:ALU_S3, 11:XOR3, 12:IBUS3,
-        13:ALU_S2, 14:IBUS2, 15:XOR2, 16:VCC},
+    U27:{type:SST39SF010A, bus:control, function:"Microcode Flash #2 (high control byte)",
+        "addr":"same as U23 (parallel wired)",
+        "data":"D[7:0] = REG_RD_EN,REG_WR_EN,ALUB_CLK,ALUR_CLK,ALU_SUB,FLAGS_CLK,PC_LOAD,ADDR_HI"},
 
-    U13:{type:74HC283, function:"ALU adder high nibble (bits 7:4)",
-        1:ALU_S5, 2:XOR5, 3:IBUS5, 4:ALU_S4,
-        5:IBUS4, 6:XOR4, 7:U12.9, 8:GND,
-        9:CARRY_OUT, 10:ALU_S7, 11:XOR7, 12:IBUS7,
-        13:ALU_S6, 14:IBUS6, 15:XOR6, 16:VCC},
+    U24:{type:74HC74, bus:control, function:"Flags (Z, C)",
+        "FF1":"D=alu_zero, CLK=FLAGS_CLK, Q=flag_z → Flash addr",
+        "FF2":"D=carry_out, CLK=FLAGS_CLK, Q=flag_c → Flash addr"},
 
-    U14:{type:74HC86, function:"XOR low nibble (SUB invert bits 0-3)",
-        1:ALUB0, 2:ALU_SUB, 3:XOR0,
-        4:ALUB1, 5:ALU_SUB, 6:XOR1,
-        7:GND,
-        8:XOR2, 9:ALUB2, 10:ALU_SUB,
-        11:XOR3, 12:ALUB3, 13:ALU_SUB, 14:VCC},
+    U26:{type:74HC161, bus:control, function:"Step counter (sequences micro-steps)",
+        CLK:CLK, "/CLR":STEP_RST_n, "Q[2:0]":"→Flash addr A[10:8]"},
 
-    U15:{type:74HC86, function:"XOR high nibble (SUB invert bits 4-7)",
-        1:ALUB4, 2:ALU_SUB, 3:XOR4,
-        4:ALUB5, 5:ALU_SUB, 6:XOR5,
-        7:GND,
-        8:XOR6, 9:ALUB6, 10:ALU_SUB,
-        11:XOR7, 12:ALUB7, 13:ALU_SUB, 14:VCC},
+    // --- MEMORY (on RV8-Bus) ---
+    ROM:{type:AT28C256, bus:RV8_Bus, function:"Program ROM",
+        "A[14:0]":"from RV8-Bus A[14:0]", "D[7:0]":"to RV8-Bus D[7:0]",
+        "/CE":"A15 or decode", "/OE":"/RD", "/WE":VCC},
+    RAM:{type:62256, bus:RV8_Bus, function:"Data RAM",
+        "A[14:0]":"from RV8-Bus A[14:0]", "D[7:0]":"↔ RV8-Bus D[7:0]",
+        "/CE":"not A15 or decode", "/OE":"/RD", "/WE":"/WR"},
 
-    // ═══════════════════════════════════════════
-    // PC — 74HC574 ×2 (U16-U17) — has /OE!
-    // Drives ADDR[15:0] during fetch (/OE=LOW)
-    // Disconnected during data access (/OE=HIGH)
-    // ═══════════════════════════════════════════
-
-    U16:{type:74HC574, function:"PC low byte (drives ADDR[7:0] during fetch)",
-        1:DATA_MODE, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:PC_LO_CLK, 12:ADDR0, 13:ADDR1, 14:ADDR2, 15:ADDR3,
-        16:ADDR4, 17:ADDR5, 18:ADDR6, 19:ADDR7, 20:VCC},
-
-    U17:{type:74HC574, function:"PC high byte (drives ADDR[15:8] during fetch)",
-        1:DATA_MODE, 2:ALU_R0, 3:ALU_R1, 4:ALU_R2, 5:ALU_R3,
-        6:ALU_R4, 7:ALU_R5, 8:ALU_R6, 9:ALU_R7, 10:GND,
-        11:PC_HI_CLK, 12:ADDR8, 13:ADDR9, 14:ADDR10, 15:ADDR11,
-        16:ADDR12, 17:ADDR13, 18:ADDR14, 19:ADDR15, 20:VCC},
-
-    // ═══════════════════════════════════════════
-    // ADDRESS LATCHES — 74HC574 ×2 (U18-U19)
-    // Drive ADDR[15:0] during data access (/OE=LOW)
-    // ═══════════════════════════════════════════
-
-    U18:{type:74HC574, function:"Address latch low (drives ADDR[7:0] during data)",
-        1:/DATA_MODE, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:ADDR_LO_CLK, 12:ADDR0, 13:ADDR1, 14:ADDR2, 15:ADDR3,
-        16:ADDR4, 17:ADDR5, 18:ADDR6, 19:ADDR7, 20:VCC},
-
-    U19:{type:74HC574, function:"Address latch high (drives ADDR[15:8] during data)",
-        1:/DATA_MODE, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:ADDR_HI_CLK, 12:ADDR8, 13:ADDR9, 14:ADDR10, 15:ADDR11,
-        16:ADDR12, 17:ADDR13, 18:ADDR14, 19:ADDR15, 20:VCC},
-
-    // ═══════════════════════════════════════════
-    // DECODE — 74HC138 ×2 (U20-U21)
-    // ═══════════════════════════════════════════
-
-    U20:{type:74HC138, function:"Register READ select (who drives IBUS)",
-        1:REG_RD0, 2:REG_RD1, 3:REG_RD2, 4:GND,
-        5:GND, 6:VCC, 7:U8./OE, 8:GND,
-        9:U7./OE, 10:U6./OE, 11:U5./OE, 12:U4./OE,
-        13:U3./OE, 14:U2./OE, 15:U1./OE, 16:VCC},
-    // A,B,C from U27 microcode (REG_RD[2:0])
-
-    U21:{type:74HC138, function:"Register WRITE select (who latches ALU_R)",
-        1:REG_WR0, 2:REG_WR1, 3:REG_WR2, 4:GND,
-        5:GND, 6:REG_WR_EN, 7:U8.CLK, 8:GND,
-        9:U7.CLK, 10:U6.CLK, 11:U5.CLK, 12:U4.CLK,
-        13:U3.CLK, 14:U2.CLK, 15:U1.CLK, 16:VCC},
-    // A,B,C from U27 microcode (REG_WR[2:0]), G1=REG_WR_EN
-
-    // ═══════════════════════════════════════════
-    // BUS BUFFER — 74HC245 (U22)
-    // ═══════════════════════════════════════════
-
-    U22:{type:74HC245, function:"External bus buffer (IBUS ↔ ROM/RAM data)",
-        1:BUF_DIR, 2:IBUS0, 3:IBUS1, 4:IBUS2, 5:IBUS3,
-        6:IBUS4, 7:IBUS5, 8:IBUS6, 9:IBUS7, 10:GND,
-        11:DEXT7, 12:DEXT6, 13:DEXT5, 14:DEXT4, 15:DEXT3,
-        16:DEXT2, 17:DEXT1, 18:DEXT0, 19:BUF_OE, 20:VCC},
-
-    // ═══════════════════════════════════════════
-    // MICROCODE FLASH #1 — SST39SF010A (U23, PDIP-32)
-    // Address = {step[3:0], opcode[7:0], flag_z, flag_c, /IRQ} = 14 bits
-    // Data = 8 control signals (bus/ALU/clocks/step_reset)
-    // Step counter (U26) feeds A8-A11
-    // ═══════════════════════════════════════════
-
-    U23:{type:SST39SF010A, function:"Microcode ROM #1 (bus ctrl, ALU, clocks)",
-        // Address inputs:
-        10:OP0, 9:OP1, 8:OP2, 7:OP3, 6:OP4, 5:OP5, 4:OP6, 3:OP7,
-        // A0-A7 = opcode from U9
-        25:U26.Q0, 24:U26.Q1, 21:U26.Q2, 23:U26.Q3,
-        // A8-A11 = step counter from U26
-        26:FLAG_Z, 2:FLAG_C,
-        // A12=FLAG_Z, A13=FLAG_C (from U24)
-        1:/IRQ,
-        // A14=/IRQ from bus
-        // Unused address pins tied low:
-        14:GND, 20:GND, 22:GND, 30:GND,
-        27:VCC, 28:VCC, 31:VCC, 32:VCC,
-        // Data outputs (8 control signals):
-        11:BUF_OE, 12:BUF_DIR, 13:DATA_MODE, 15:ALU_SUB,
-        16:IR_CLK, 17:OPR_CLK, 18:ALUB_CLK, 19:STEP_RST},
-    // D0=BUF_OE, D1=BUF_DIR, D2=DATA_MODE, D3=ALU_SUB
-    // D4=IR_CLK, D5=OPR_CLK, D6=ALUB_CLK, D7=STEP_RST (→ U26./CLR)
-
-    // ═══════════════════════════════════════════
-    // FLAGS — 74HC74 (U24)
-    // ═══════════════════════════════════════════
-
-    U24:{type:74HC74, function:"Flags: Z (zero) and C (carry)",
-        1:/RST, 2:ALU_ZERO, 3:FLAGS_CLK, 4:VCC,
-        5:FLAG_Z, 6:, 7:GND, 8:,
-        9:FLAG_C, 10:VCC, 11:FLAGS_CLK, 12:CARRY_OUT,
-        13:/RST, 14:VCC},
-    // FF1: D=ALU_ZERO (NOR of all ALU_S bits), Q=FLAG_Z → Flash A12
-    // FF2: D=CARRY_OUT (U13.9), Q=FLAG_C → Flash A13
-
-    // ═══════════════════════════════════════════
-    // ALU RESULT LATCH — 74HC574 (U25)
-    // ═══════════════════════════════════════════
-
-    U25:{type:74HC574, function:"ALU result latch → ALU_R bus → all register D inputs",
-        1:GND, 2:ALU_S0, 3:ALU_S1, 4:ALU_S2, 5:ALU_S3,
-        6:ALU_S4, 7:ALU_S5, 8:ALU_S6, 9:ALU_S7, 10:GND,
-        11:ALUR_CLK, 12:ALU_R0, 13:ALU_R1, 14:ALU_R2, 15:ALU_R3,
-        16:ALU_R4, 17:ALU_R5, 18:ALU_R6, 19:ALU_R7, 20:VCC},
-    // /OE(1)=GND (always drives ALU_R bus)
-
-    // ═══════════════════════════════════════════
-    // STEP COUNTER — 74HC161 (U26) *** NEW ***
-    // Counts micro-steps 0-15. Reset by STEP_RST from U23.D7.
-    // Feeds step bits to both Flash chips (U23 + U27).
-    // ═══════════════════════════════════════════
-
-    U26:{type:74HC161, function:"Step counter (micro-step sequencer)",
-        1:/STEP_RST, 2:CLK, 3:GND, 4:GND,
-        5:GND, 6:GND, 7:VCC, 8:GND,
-        9:VCC, 10:VCC, 11:STEP0, 12:STEP1,
-        13:STEP2, 14:STEP3, 15:, 16:VCC},
-    // Pin 1  = /CLR = STEP_RST inverted (from U23.D7, active-low reset)
-    // Pin 2  = CLK = system clock
-    // Pin 3-6 = D0-D3 = GND (parallel load value = 0, unused)
-    // Pin 7  = /LOAD = VCC (never parallel load)
-    // Pin 8  = GND
-    // Pin 9  = ENP = VCC (always count)
-    // Pin 10 = ENT = VCC (always count)
-    // Pin 11 = Q0 → STEP0 → U23.A8, U27.A8
-    // Pin 12 = Q1 → STEP1 → U23.A9, U27.A9
-    // Pin 13 = Q2 → STEP2 → U23.A10, U27.A10
-    // Pin 14 = Q3 → STEP3 → U23.A11, U27.A11
-    // Pin 15 = RCO (unused)
-    // Pin 16 = VCC
-
-    // ═══════════════════════════════════════════
-    // MICROCODE FLASH #2 — AT28C256 or SST39SF010A (U27) *** NEW ***
-    // Same address as U23 (step+opcode+flags+IRQ)
-    // Outputs: register select, PC control
-    // ═══════════════════════════════════════════
-
-    U27:{type:SST39SF010A, function:"Microcode ROM #2 (reg select, PC ctrl)",
-        // Address inputs (same as U23):
-        10:OP0, 9:OP1, 8:OP2, 7:OP3, 6:OP4, 5:OP5, 4:OP6, 3:OP7,
-        // A0-A7 = opcode from U9
-        25:U26.Q0, 24:U26.Q1, 21:U26.Q2, 23:U26.Q3,
-        // A8-A11 = step counter from U26
-        26:FLAG_Z, 2:FLAG_C,
-        // A12=FLAG_Z, A13=FLAG_C
-        1:/IRQ,
-        // A14=/IRQ
-        // Unused address pins tied low:
-        14:GND, 20:GND, 22:GND, 30:GND,
-        27:VCC, 28:VCC, 31:VCC, 32:VCC,
-        // Data outputs (8 control signals):
-        11:REG_RD0, 12:REG_RD1, 13:REG_RD2, 15:REG_WR0,
-        16:REG_WR1, 17:REG_WR2, 18:PC_INC, 19:PC_LOAD},
-    // D0-D2 = REG_RD[2:0] → U20 (read decoder) A,B,C
-    // D3-D5 = REG_WR[2:0] → U21 (write decoder) A,B,C
-    // D6 = PC_INC (increment program counter)
-    // D7 = PC_LOAD (load PC from ALU_R for jumps/branches)
-
-    // ═══════════════════════════════════════════
-    // MEMORY — ROM + RAM
-    // ═══════════════════════════════════════════
-
-    ROM:{type:AT28C256, function:"Program ROM (32KB)",
-        1:ADDR14, 2:ADDR12, 3:ADDR7, 4:ADDR6, 5:ADDR5, 6:ADDR4,
-        7:ADDR3, 8:ADDR2, 9:ADDR1, 10:ADDR0, 11:DEXT0, 12:DEXT1,
-        13:DEXT2, 14:GND, 15:DEXT3, 16:DEXT4, 17:DEXT5, 18:DEXT6,
-        19:DEXT7, 20:ADDR15, 21:ADDR10, 22:/RD, 23:ADDR11,
-        24:ADDR9, 25:ADDR8, 26:ADDR13, 27:VCC, 28:VCC},
-
-    RAM:{type:62256, function:"Data RAM (32KB)",
-        1:ADDR14, 2:ADDR12, 3:ADDR7, 4:ADDR6, 5:ADDR5, 6:ADDR4,
-        7:ADDR3, 8:ADDR2, 9:ADDR1, 10:ADDR0, 11:DEXT0, 12:DEXT1,
-        13:DEXT2, 14:GND, 15:DEXT3, 16:DEXT4, 17:DEXT5, 18:DEXT6,
-        19:DEXT7, 20:ADDR15, 21:ADDR10, 22:/RD, 23:ADDR11,
-        24:ADDR9, 25:ADDR8, 26:ADDR13, 27:/WR, 28:VCC},
-
-    // ═══════════════════════════════════════════
-    // SUPPORT
-    // ═══════════════════════════════════════════
-
-    OSC:{type:"Crystal 3.5MHz/10MHz (4-pin DIP)", 1:VCC, 7:GND, 8:CLK, 14:},
-    R1:{type:"10K", function:"Reset pull-up", 1:VCC, 2:/RST},
-    SW_RST:{type:"Pushbutton", function:"Reset", 1:/RST, 2:GND},
-    C1:{type:"100nF", function:"Reset debounce", 1:/RST, 2:GND},
-    C2:{type:"100nF", function:"Decoupling Flash U23", 1:VCC, 2:GND},
-    C3:{type:"100nF", function:"Decoupling ROM", 1:VCC, 2:GND},
-    C4:{type:"100nF", function:"Decoupling RAM", 1:VCC, 2:GND},
-    C5:{type:"100uF", function:"Bulk power", 1:VCC, 2:GND},
-    C6:{type:"100nF", function:"Decoupling Flash U27", 1:VCC, 2:GND},
-    C7:{type:"100nF", function:"Decoupling U26 step counter", 1:VCC, 2:GND},
-
-    // === LEDs (optional debug) ===
-    LED_D0:{A:IBUS0, K:R330.GND}, LED_D1:{A:IBUS1, K:R330.GND},
-    LED_D2:{A:IBUS2, K:R330.GND}, LED_D3:{A:IBUS3, K:R330.GND},
-    LED_D4:{A:IBUS4, K:R330.GND}, LED_D5:{A:IBUS5, K:R330.GND},
-    LED_D6:{A:IBUS6, K:R330.GND}, LED_D7:{A:IBUS7, K:R330.GND},
-    LED_CLK:{A:CLK, K:R330.GND},
-
-    // === 40-PIN BUS CONNECTOR ===
-    RV8_Bus:{type:"40-pin IDC",
-        1:ADDR0, 2:ADDR1, 3:ADDR2, 4:ADDR3,
-        5:ADDR4, 6:ADDR5, 7:ADDR6, 8:ADDR7,
-        9:ADDR8, 10:ADDR9, 11:ADDR10, 12:ADDR11,
-        13:ADDR12, 14:ADDR13, 15:ADDR14, 16:ADDR15,
-        17:DEXT0, 18:DEXT1, 19:DEXT2, 20:DEXT3,
-        21:DEXT4, 22:DEXT5, 23:DEXT6, 24:DEXT7,
-        25:/RD, 26:/WR, 27:CLK, 28:/RST,
-        29:/NMI, 30:/IRQ, 31:HALT, 32:SYNC,
-        33:, 34:, 35:, 36:,
-        37:, 38:, 39:VCC, 40:GND}
-
-    // ═══════════════════════════════════════════
-    // POWER TABLE
-    // ═══════════════════════════════════════════
-    // U1-U11, U16-U19, U25 (74HC574): VCC=20, GND=10
-    // U12-U13 (74HC283): VCC=16, GND=8
-    // U14-U15 (74HC86): VCC=14, GND=7
-    // U20-U21 (74HC138): VCC=16, GND=8
-    // U22 (74HC245): VCC=20, GND=10
-    // U23 (SST39SF010A): VCC=32, GND=16
-    // U24 (74HC74): VCC=14, GND=7
-    // U25 (74HC574): VCC=20, GND=10
-    // U26 (74HC161): VCC=16, GND=8
-    // U27 (SST39SF010A): VCC=32, GND=16
-    // ROM (AT28C256): VCC=28, GND=14
-    // RAM (62256): VCC=28, GND=14
+    // --- SUPPORT ---
+    OSC:{type:"Crystal 3.5/10MHz", output:CLK},
+    R1:{type:"10K", 1:VCC, 2:"/RST"},
+    SW:{type:"Pushbutton", 1:"/RST", 2:GND},
+    C1:{type:"100nF", 1:"/RST", 2:GND}
     }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SUMMARY: How buses connect
+// ═══════════════════════════════════════════════════════════════
+//
+//  ┌─────────────────────────────────────────────────────────┐
+//  │                    IBUS (internal 8-bit)                  │
+//  │  Drivers: registers(U1-U8), operand(U10), buffer(U22)   │
+//  │  Consumers: IR(U9), operand(U10), ALU_B(U11),           │
+//  │             addr_lo(U18), addr_hi(U19), buffer(U22)     │
+//  └────────────────────────┬────────────────────────────────┘
+//                           │ U22 (74HC245) bridges
+//                           ▼
+//  ┌─────────────────────────────────────────────────────────┐
+//  │              RV8-Bus (external 40-pin)                    │
+//  │  A[15:0]: from PC(U16+U17) or addr_latch(U18+U19)      │
+//  │  D[7:0]:  ↔ U22 ↔ IBUS                                 │
+//  │  /RD,/WR: from microcode                                │
+//  │  Connects to: ROM, RAM, Programmer, Trainer, peripherals│
+//  └─────────────────────────────────────────────────────────┘
+//
+// NO BUS CONFLICTS:
+//   IBUS: only one /OE active (microcode ensures)
+//   RV8-Bus addr: PC or latches (never both, controlled by PC_ADDR signal)
+//   RV8-Bus data: ROM/RAM output or CPU write (controlled by /RD, /WR)
