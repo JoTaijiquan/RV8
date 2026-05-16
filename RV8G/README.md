@@ -1,4 +1,4 @@
-# RV8-W — Full ISA, No Microcode, RAM Registers
+# RV8-G — Full ISA, No Microcode, RAM Registers
 
 **27 logic chips. Full RISC-V ISA. No microcode. 1.7 MIPS @ 10 MHz.**
 
@@ -39,4 +39,4 @@
 | — | SST39SF010A | Program ROM |
 | — | 62256 | RAM (includes registers $00-$07) |
 
-**= RV8-WR (19 chips) + 8 chips for AND/OR/relative branch.**
+**= RV8-GR (19 chips) + 8 chips for AND/OR/relative branch.**

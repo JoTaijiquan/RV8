@@ -1,4 +1,4 @@
-# RV8-W — Wide Instruction, No Microcode
+# RV8-G — Wide Instruction, No Microcode
 
 **24 logic chips. 2-cycle instructions. 5 MIPS @ 10 MHz. No microcode ROM.**
 
@@ -114,8 +114,8 @@ If we use opcode bits directly as control, we're back to RV8-G's issues:
 | Approach | Decode method | Chips for decode | Total |
 |----------|:---:|:---:|:---:|
 | RV8 (microcode) | Flash lookup | 2 (Flash) + 1 (step counter) | 29 |
-| RV8-W (2-cycle, gates decode) | Direct gates | ~5-6 (138+139+08+32+...) | 28-30 |
-| RV8-W (2-cycle, small EEPROM) | 1× AT28C64 (8KB) | 1 chip | **26** |
+| RV8-G (2-cycle, gates decode) | Direct gates | ~5-6 (138+139+08+32+...) | 28-30 |
+| RV8-G (2-cycle, small EEPROM) | 1× AT28C64 (8KB) | 1 chip | **26** |
 
 **The 2-cycle fetch with a SMALL EEPROM (AT28C64, 8KB) for decode is the sweet spot:**
 
@@ -128,7 +128,7 @@ The AT28C64 is tiny (8KB, DIP-28, $2) and acts as a **combinational decoder** �
 
 ---
 
-## RV8-W Final Design:
+## RV8-G Final Design:
 
 ```
 Program ROM: SST39SF010A (128KB, 8-bit, holds program)
@@ -141,7 +141,7 @@ Or: skip decode ROM, use 16-bit program ROM (27C1024) — control bits IN the in
 
 ---
 
-## Simplest RV8-W (with 27C1024):
+## Simplest RV8-G (with 27C1024):
 
 Back to the original idea: **one 16-bit ROM, instruction IS control.**
 
@@ -320,8 +320,8 @@ Hmm — back to 29 again for full memory access.
 | Design | Logic chips | MIPS | RISC-V? | Buildable? |
 |--------|:-----------:|:----:|:-------:|:----------:|
 | RV8 (microcode) | 27 | 2.17 | ✅ Yes | ✅ (verified) |
-| RV8-W (16-bit ROM) | 25-27 | 5-10 | ⚠️ Partial | ⚠️ (ALU A mux + addr latch issues) |
-| RV8-W (accumulator) | 24 | 10 | ❌ No | ✅ (Gigatron proven) |
+| RV8-G (16-bit ROM) | 25-27 | 5-10 | ⚠️ Partial | ⚠️ (ALU A mux + addr latch issues) |
+| RV8-G (accumulator) | 24 | 10 | ❌ No | ✅ (Gigatron proven) |
 
 **The RISC-V register-to-register style always costs more chips** because it needs:
 - ALU A source mux (which register feeds A?)

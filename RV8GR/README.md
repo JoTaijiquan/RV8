@@ -1,4 +1,4 @@
-# RV8-WR — Reduced ISA, No Microcode, RAM Registers
+# RV8-GR — Reduced ISA, No Microcode, RAM Registers
 
 **19 logic chips. No microcode. Plays games. Mostly compatible with RV8.**
 
@@ -128,13 +128,13 @@ This needs a mux to select: AC.D ← adder output OR XOR output. That's the same
 
 **XOR is FREE if we add one mux setting!** The XOR chips are already there. Just route their output as an alternative to the adder output.
 
-**Revised: RV8-WR gets XOR at no extra cost.** ISA = 21 instructions.
+**Revised: RV8-GR gets XOR at no extra cost.** ISA = 21 instructions.
 
 ---
 
 ## Compatibility with RV8
 
-| RV8 instruction | RV8-WR | Notes |
+| RV8 instruction | RV8-GR | Notes |
 |-----------------|:------:|-------|
 | ADD/SUB/ADDI/SUBI | ✅ | Same |
 | XOR/XORI | ✅ | Free (reuse XOR chips) |
@@ -151,7 +151,7 @@ This needs a mux to select: AC.D ← adder output OR XOR output. That's the same
 
 ---
 
-## Programs that run unchanged on RV8-WR:
+## Programs that run unchanged on RV8-GR:
 - Any program that doesn't use AND/OR/SRL/relative-branch
 - Most arithmetic (ADD, SUB, shifts via ADD)
 - All memory access (LB, SB, PUSH, POP)

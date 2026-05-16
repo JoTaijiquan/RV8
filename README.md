@@ -6,7 +6,7 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 
 ## The Family
 
-| | **RV8** | **RV8-R** | **RV8-W** | **RV8-WR** |
+| | **RV8** | **RV8-R** | **RV8-G** | **RV8-GR** |
 |--|:---:|:---:|:---:|:---:|
 | **Logic chips** | 27 | **17** | 27 | **19** |
 | **Total** | 29 | 20 | 29 | 21 |
@@ -25,8 +25,8 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 |----------|-------|
 | **Learn microcode + proven** | **RV8** (27 chips) |
 | **Fewest chips + full ISA** | **RV8-R** (17 chips) |
-| **Full ISA + no microcode** | **RV8-W** (27 chips) |
-| **No microcode + cheapest games** | **RV8-WR** (19 chips) |
+| **Full ISA + no microcode** | **RV8-G** (27 chips) |
+| **No microcode + cheapest games** | **RV8-GR** (19 chips) |
 
 ---
 
@@ -36,8 +36,8 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 |---------|-----|-----|
 | **RV8** | Proven, working Verilog (8/8) | Most chips (27), needs microcode |
 | **RV8-R** | Fewest chips (17), full ISA | Needs 2× Flash programmer |
-| **RV8-W** | Full ISA, no microcode, fastest | Same chips as RV8, complex wiring |
-| **RV8-WR** | No microcode, cheap (19), games | Own ISA, no logic ops |
+| **RV8-G** | Full ISA, no microcode, fastest | Same chips as RV8, complex wiring |
+| **RV8-GR** | No microcode, cheap (19), games | Own ISA, no logic ops |
 
 ---
 
@@ -47,8 +47,8 @@ Build real computers from 74HC chips. Run BASIC. Play games.
 RV8/
 ├── RV8/            ← 27 chips, hardware regs, microcode (proven)
 ├── RV8R/           ← 17 chips, RAM regs, microcode (fewest + full ISA)
-├── RV8W/           ← 27 chips, full ISA, no microcode, fastest
-├── RV8WR/          ← 19 chips, reduced ISA, no microcode, cheapest
+├── RV8G/           ← 27 chips, full ISA, no microcode, fastest
+├── RV8GR/          ← 19 chips, reduced ISA, no microcode, cheapest
 ├── Programmer/     ← ESP32 board (works with all)
 ├── Old_Design/     ← Archived
 ├── Reference/      ← Gigatron, SAP-1, Nand2Tetris
@@ -68,7 +68,7 @@ RV8/
 
 ## Status
 
-| | RV8 | RV8-R | RV8-W | RV8-WR |
+| | RV8 | RV8-R | RV8-G | RV8-GR |
 |--|:---:|:---:|:---:|:---:|
 | Design doc | ✅ | ✅ | ✅ | ✅ |
 | Verilog | ✅ 8/8 | ⬜ | ⬜ | ⬜ |

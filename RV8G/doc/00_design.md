@@ -1,4 +1,4 @@
-# RV8-W — Wide Instruction, Accumulator, No Microcode
+# RV8-G — Wide Instruction, Accumulator, No Microcode
 
 **24 logic chips. 1 cycle/instruction. 10 MIPS @ 10 MHz. No microcode.**
 
@@ -276,7 +276,7 @@ At 3.5 MHz (286ns): easy. ✅
 
 ## Comparison:
 
-| | RV8 (microcode) | RV8-W (accumulator) |
+| | RV8 (microcode) | RV8-G (accumulator) |
 |--|:---:|:---:|
 | Logic chips | 27 | **24** |
 | Total packages | 29 | **26** |
@@ -322,7 +322,7 @@ loop:
 
 ## Verdict:
 
-**RV8-W is the Gigatron approach with our register set.**
+**RV8-G is the Gigatron approach with our register set.**
 - 24 chips, no microcode, 8 MIPS
 - Trades RISC-V register-register for accumulator
 - Assembly looks like 6502/Z80 (AC-centric) not RISC-V

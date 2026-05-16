@@ -1,6 +1,6 @@
 {
 // ═══════════════════════════════════════════════════════════════
-// RV8-WR CPU — WiringGuide (Bus-Centric)
+// RV8-GR CPU — WiringGuide (Bus-Centric)
 // 19 logic chips + ROM + RAM = 21 packages
 //
 // NO MICROCODE. Instruction control byte directly drives hardware.
@@ -14,7 +14,7 @@
 // AC (U1) hardwired to ALU A. XOR chips reused for XOR instruction.
 // ═══════════════════════════════════════════════════════════════
 
-Project: RV8-WR,
+Project: RV8-GR,
 
 // ═══════════════════════════════════════════════════════════════
 // RV8-Bus (EXTERNAL) — 40-pin, same as all RV8 variants

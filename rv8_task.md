@@ -1,11 +1,11 @@
 # RV8 Project — Task Tracker
 
 **Last updated**: 2026-05-16 23:11
-**Focus**: RV8-WR (19 chips, no microcode, cheapest that plays games)
+**Focus**: RV8-GR (19 chips, no microcode, cheapest that plays games)
 
 ---
 
-## ✅ Completed (RV8-WR)
+## ✅ Completed (RV8-GR)
 
 - [x] Design (19 chips, RAM registers, accumulator, no microcode)
 - [x] ISA defined (21 instructions, ~80% RV8 compatible, XOR free)
@@ -16,14 +16,14 @@
 
 ---
 
-## ⬜ TODO — RV8-WR (next steps in order)
+## ⬜ TODO — RV8-GR (next steps in order)
 
 | # | Task | Priority | Notes |
 |:-:|------|:--------:|-------|
 | 1 | **Instruction trace** (trace ADD, LB, SB, BEQ through hardware) | HIGH | Verify WiringGuide actually works |
-| 2 | **Verilog model** (rv8wr_cpu.v, match hardware exactly) | HIGH | Model the 3-cycle, control-byte-driven design |
+| 2 | **Verilog model** (rv8gr_cpu.v, match hardware exactly) | HIGH | Model the 3-cycle, control-byte-driven design |
 | 3 | **Testbench** (all 21 instructions) | HIGH | Prove ISA works |
-| 4 | **Assembler** (rv8wr_asm.py) | HIGH | Need it to write programs |
+| 4 | **Assembler** (rv8gr_asm.py) | HIGH | Need it to write programs |
 | 5 | **Build Programmer board** (physical) | HIGH | Need it to flash ROM |
 | 6 | **Order parts** (19 chips + ROM + RAM) | MEDIUM | ~$15 total |
 | 7 | **Breadboard build** | MEDIUM | The real test |
@@ -43,7 +43,7 @@
 
 ---
 
-## Priority Order (RV8-WR focus)
+## Priority Order (RV8-GR focus)
 
 ```
 1. Instruction trace (verify hardware paths)
@@ -58,7 +58,7 @@
 
 ---
 
-## Parts to order (RV8-WR)
+## Parts to order (RV8-GR)
 
 | Part | Qty | Source | Est. cost |
 |------|:---:|--------|:---------:|

@@ -1,4 +1,4 @@
-# RV8-W v2 — RAM Registers, 20 Chips, No Microcode
+# RV8-G v2 — RAM Registers, 20 Chips, No Microcode
 
 **20 logic chips. Registers in RAM. Accumulator + parallel ALU. ~1.7 MIPS @ 10 MHz.**
 
@@ -194,7 +194,7 @@ Need PC value on IBUS → write to RAM. But PC outputs go to address bus, not IB
 
 ## Comparison (FINAL HONEST):
 
-| | RV8 | RV8-W v2 |
+| | RV8 | RV8-G v2 |
 |--|:---:|:---:|
 | Logic chips | 27 | **19** |
 | Total | 29 | **21** |
@@ -207,4 +207,4 @@ Need PC value on IBUS → write to RAM. But PC outputs go to address bus, not IB
 | Complexity | High | **Low** |
 | BASIC | ✅ | ✅ |
 
-**RV8-W v2: 8 fewer chips than RV8, faster, simpler. Trades full ISA for minimalism.**
+**RV8-G v2: 8 fewer chips than RV8, faster, simpler. Trades full ISA for minimalism.**

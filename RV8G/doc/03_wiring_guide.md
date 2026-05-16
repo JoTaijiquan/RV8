@@ -1,8 +1,8 @@
 {
 // ═══════════════════════════════════════════════════════════════
-// RV8-W CPU — WiringGuide (Bus-Centric)
+// RV8-G CPU — WiringGuide (Bus-Centric)
 // 27 logic chips + ROM + RAM = 29 packages
-// = RV8-WR (19 chips) + 8 chips for full ISA (AND/OR/branch)
+// = RV8-GR (19 chips) + 8 chips for full ISA (AND/OR/branch)
 //
 // NO MICROCODE. Control byte + derived gates drive hardware.
 // RAM REGISTERS ($00-$07). AC is only hardware register.
@@ -14,7 +14,7 @@
 //   ALU_A (internal): AC or PC → adder A (selected by U24-U25 mux)
 // ═══════════════════════════════════════════════════════════════
 
-Project: RV8-W,
+Project: RV8-G,
 
 RV8_Bus:{
     "A[15:0]": "PC (fetch) or operand (data access), via U13+U7 mux",
@@ -34,7 +34,7 @@ IBUS:{
 
 Part:{
     // ═══════════════════════════════════════════
-    // CORE (same as RV8-WR, 19 chips)
+    // CORE (same as RV8-GR, 19 chips)
     // ═══════════════════════════════════════════
 
     U1:{type:74HC574, function:"AC (accumulator, ALU A source)",
@@ -176,7 +176,7 @@ Part:{
 },
 
 // ═══════════════════════════════════════════════════════════════
-// CONTROL ENCODING (same as RV8-WR + extra bits for logic ops)
+// CONTROL ENCODING (same as RV8-GR + extra bits for logic ops)
 // ═══════════════════════════════════════════════════════════════
 //
 // IR_HIGH (U2) Q[7:0]:

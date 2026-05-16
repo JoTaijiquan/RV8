@@ -6,11 +6,11 @@
 - 17 logic chips, full ISA, RAM registers, microcode
 - Binary compatible with RV8
 
-### RV8-W v0.1
+### RV8-G v0.1
 - 27 logic chips, full ISA, no microcode, RAM registers
 - Binary compatible with RV8, fastest (1.7 MIPS)
 
-### RV8-WR v0.1
+### RV8-GR v0.1
 - 19 logic chips, reduced ISA (20 instr), no microcode, RAM registers
 - Own ISA (not compatible), cheapest that plays games
 
@@ -22,7 +22,7 @@
 
 ### Archived
 - RV8-S (15 chips, too slow)
-- RV8-G (32 chips honest, broken)
+- Old RV8-G pure gates (32 chips honest, broken)
 
 ---
 
